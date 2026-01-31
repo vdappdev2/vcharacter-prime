@@ -1,0 +1,51 @@
+# vcharacter-prime
+
+Provably fair dice-based character creation with on-chain storage using Verus VDXF.
+
+## Features
+
+- **Provably Fair Dice**: Character stats derived from blockchain randomness using commit-reveal scheme
+- **On-Chain Storage**: Characters and achievements stored in VerusID contentmultimap via VDXF
+- **The Primordial Trial**: Turn-based combat game with provably fair rolls
+- **Cross-Device Wallet Flow**: QR code scanning works across devices via Redis
+
+## Requirements
+
+- Node.js 20+
+- Verus Mobile wallet (for signing transactions)
+- Upstash Redis account (for cross-device flow)
+
+## Setup
+
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   yarn install
+   ```
+3. Copy environment file and configure:
+   ```bash
+   cp .env.example .env
+   ```
+4. Set required environment variables in `.env`:
+   - `SERVICE_IDENTITY_WIF` - Private key for service identity (testidx@ for testnet)
+   - `UPSTASH_REDIS_REST_URL` - Redis URL from Upstash
+   - `UPSTASH_REDIS_REST_TOKEN` - Redis token from Upstash
+
+5. Run development server:
+   ```bash
+   yarn dev
+   ```
+
+## Pages
+
+- `/` - Character creation
+- `/play` - The Primordial Trial game
+- `/verify` - Verify characters and view achievements
+
+## Network
+
+Currently configured for **testnet** (vrsctest). To change networks, update `CURRENT_NETWORK` in `src/lib/config.ts`.
+
+## License
+
+MIT

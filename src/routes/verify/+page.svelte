@@ -1,0 +1,592 @@
+<script lang="ts">
+	import { verifyBossFight, type ReplayVerificationResult } from '$lib/game';
+	import type { Element, SpiritAnimal } from '$lib/types';
+
+	// State machine for verification flow
+	type FlowState = 'idle' | 'loading-list' | 'select' | 'loading-verify' | 'success' | 'error';
+
+	let state: FlowState = 'idle';
+	let error: string | null = null;
+
+	// Input
+	let identityInput = '';
+
+	// Character list data
+	let identityAddress = '';
+	let characters: Array<{
+		name: string;
+		rollBlockHeight: number;
+		traits: {
+			element: string;
+			spirit: string;
+			sex: string;
+		};
+	}> = [];
+
+	// Achievement data (includes new verification fields)
+	type Achievement = {
+		characterName: string;
+		characterRollBlockHeight: number;
+		bossSceneSeed: string;
+		bossSceneBlockHeight: number;
+		bossSceneBlockHash?: string;
+		playerActions?: ('attack' | 'defend' | 'special')[];
+		difficulty: 'standard' | 'hard';
+		finalHp: number;
+		roundsToWin: number;
+		completedAtBlock: number;
+	};
+	let achievements: Achievement[] = [];
+
+	// Achievement verification results (keyed by completedAtBlock)
+	let achievementVerificationResults: Map<number, ReplayVerificationResult> = new Map();
+	let verifyingAchievement: number | null = null;
+
+	// Helper to get achievements for a character
+	function getCharacterAchievements(rollBlockHeight: number): Achievement[] {
+		return achievements.filter(a => a.characterRollBlockHeight === rollBlockHeight);
+	}
+
+	// Verification result
+	let verificationResult: {
+		valid: boolean;
+		character?: {
+			name: string;
+			identity: string;
+			identityAddress: string;
+			stats: Record<string, { total: number; dice: number[]; modifier: number }>;
+			traits: { element: string; spirit: string; sex: string };
+			verification: {
+				clientSeed: string;
+				clientSeedHash: string;
+				rollBlockHeight: number;
+				rollBlockHash: string;
+				commitmentBlockHeight: number;
+			};
+		};
+		verification?: {
+			seedHashValid: boolean;
+			blockHashValid: boolean;
+			statsValid: boolean;
+			traitsValid: boolean;
+			allValid: boolean;
+		};
+	} | null = null;
+
+	async function lookupIdentity() {
+		if (!identityInput.trim()) {
+			error = 'Please enter a VerusID';
+			return;
+		}
+
+		state = 'loading-list';
+		error = null;
+		characters = [];
+		achievements = [];
+		verificationResult = null;
+
+		try {
+			// Fetch characters and achievements in parallel
+			const [charResponse, achieveResponse] = await Promise.all([
+				fetch(`/api/character/list?identity=${encodeURIComponent(identityInput.trim())}`),
+				fetch(`/api/achievement/list?identity=${encodeURIComponent(identityInput.trim())}`),
+			]);
+
+			const charData = await charResponse.json();
+			const achieveData = await achieveResponse.json();
+
+			if (!charResponse.ok) {
+				throw new Error(charData.error || 'Failed to lookup identity');
+			}
+
+			if (charData.error && charData.characters?.length === 0) {
+				throw new Error(charData.error);
+			}
+
+			identityAddress = charData.identityAddress || '';
+			characters = charData.characters || [];
+			achievements = achieveData.achievements || [];
+
+			if (characters.length === 0) {
+				throw new Error('No characters found on this identity');
+			}
+
+			state = 'select';
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Unknown error';
+			state = 'error';
+		}
+	}
+
+	async function verifyCharacter(rollBlockHeight: number) {
+		state = 'loading-verify';
+		error = null;
+
+		try {
+			const response = await fetch(
+				`/api/character/verify?identity=${encodeURIComponent(identityInput.trim())}&rollBlockHeight=${rollBlockHeight}`
+			);
+			const data = await response.json();
+
+			if (!response.ok && !data.verification) {
+				throw new Error(data.error || 'Failed to verify character');
+			}
+
+			verificationResult = data;
+			state = 'success';
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Unknown error';
+			state = 'error';
+		}
+	}
+
+	function reset() {
+		state = 'idle';
+		error = null;
+		identityInput = '';
+		identityAddress = '';
+		characters = [];
+		achievements = [];
+		verificationResult = null;
+		achievementVerificationResults = new Map();
+		verifyingAchievement = null;
+	}
+
+	function backToSelect() {
+		state = 'select';
+		verificationResult = null;
+		error = null;
+		achievementVerificationResults = new Map();
+		verifyingAchievement = null;
+	}
+
+	async function verifyAchievement(achievement: Achievement) {
+		if (!verificationResult?.character) return;
+
+		verifyingAchievement = achievement.completedAtBlock;
+
+		try {
+			const character = {
+				name: verificationResult.character.name,
+				stats: {
+					str: verificationResult.character.stats.strength,
+					dex: verificationResult.character.stats.dexterity,
+					con: verificationResult.character.stats.constitution,
+					int: verificationResult.character.stats.intelligence,
+					wis: verificationResult.character.stats.wisdom,
+					cha: verificationResult.character.stats.charisma,
+				},
+				traits: {
+					element: verificationResult.character.traits.element as Element,
+					spiritAnimal: verificationResult.character.traits.spirit as SpiritAnimal,
+					sex: verificationResult.character.traits.sex as 'Male' | 'Female',
+				},
+			};
+
+			const result = await verifyBossFight(character, achievement);
+			achievementVerificationResults = new Map(achievementVerificationResults).set(
+				achievement.completedAtBlock,
+				result
+			);
+		} catch (err) {
+			achievementVerificationResults = new Map(achievementVerificationResults).set(
+				achievement.completedAtBlock,
+				{
+					valid: false,
+					expectedOutcome: 'victory',
+					expectedFinalHp: 0,
+					expectedRounds: 0,
+					error: err instanceof Error ? err.message : 'Verification failed',
+				}
+			);
+		} finally {
+			verifyingAchievement = null;
+		}
+	}
+
+	function formatModifier(mod: number): string {
+		if (mod >= 0) return `+${mod}`;
+		return `${mod}`;
+	}
+
+	function truncateHash(hash: string, length: number = 16): string {
+		if (hash.length <= length * 2) return hash;
+		return `${hash.slice(0, length)}...${hash.slice(-length)}`;
+	}
+
+	// Stat name mapping
+	const STAT_NAMES: Record<string, string> = {
+		strength: 'STR',
+		dexterity: 'DEX',
+		constitution: 'CON',
+		intelligence: 'INT',
+		wisdom: 'WIS',
+		charisma: 'CHA',
+	};
+</script>
+
+<main class="container mx-auto px-4 py-8 max-w-4xl">
+	<header class="text-center mb-12">
+		<h1 class="text-4xl font-bold text-accent mb-2">Verify Character</h1>
+		<p class="text-secondary">Confirm provably fair character creation</p>
+	</header>
+
+	{#if error && state === 'error'}
+		<div class="card mb-6 border-l-4 border-l-[var(--color-error)]">
+			<p class="text-[var(--color-error)]">{error}</p>
+			<button class="btn btn-secondary mt-4" on:click={reset}>Try Again</button>
+		</div>
+	{/if}
+
+	{#if state === 'idle' || state === 'loading-list' || state === 'error'}
+		<section class="card glow-gold">
+			<h2 class="text-2xl mb-4 text-accent">Step 1: Enter VerusID</h2>
+			<p class="text-secondary mb-6">
+				Enter the VerusID that contains the character you want to verify.
+			</p>
+
+			<div class="flex flex-col sm:flex-row gap-4">
+				<input
+					type="text"
+					bind:value={identityInput}
+					placeholder="username@ or sub.parent@"
+					class="flex-1 bg-elevated border border-[var(--color-border)] rounded-lg px-4 py-3 text-primary focus:border-accent focus:outline-none"
+					disabled={state === 'loading-list'}
+					on:keydown={(e) => e.key === 'Enter' && lookupIdentity()}
+				/>
+				<button
+					class="btn btn-primary"
+					on:click={lookupIdentity}
+					disabled={state === 'loading-list'}
+				>
+					{#if state === 'loading-list'}
+						<span class="inline-block animate-pulse">Looking up...</span>
+					{:else}
+						Lookup
+					{/if}
+				</button>
+			</div>
+		</section>
+	{/if}
+
+	{#if state === 'select'}
+		<section class="card glow-gold mb-6">
+			<div class="flex items-center justify-between mb-4">
+				<h2 class="text-2xl text-accent">Step 2: Select Character</h2>
+				<button class="btn btn-secondary text-sm" on:click={reset}>Change ID</button>
+			</div>
+
+			<div class="bg-elevated rounded-lg p-4 mb-6">
+				<p class="text-secondary">
+					Identity: <span class="text-accent font-bold">{identityInput}</span>
+				</p>
+				{#if identityAddress}
+					<p class="text-xs text-secondary mt-1 hash">{identityAddress}</p>
+				{/if}
+			</div>
+
+			<p class="text-secondary mb-4">
+				{characters.length} character{characters.length === 1 ? '' : 's'} found. Select one to verify:
+			</p>
+
+			<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+				{#each characters as char}
+					{@const charAchievements = getCharacterAchievements(char.rollBlockHeight)}
+					<div class="card-elevated hover:border-accent transition-colors">
+						<div class="flex items-start justify-between mb-2">
+							<h3 class="text-xl text-accent">{char.name}</h3>
+							{#if charAchievements.length > 0}
+								<div class="flex gap-1" title="Primordial Trial Complete">
+									{#each charAchievements as achievement}
+										<span class="text-2xl" title="{achievement.difficulty === 'hard' ? 'Hard Mode' : 'Standard'} - {achievement.roundsToWin} rounds">
+											{achievement.difficulty === 'hard' ? '🏆' : '🎖️'}
+										</span>
+									{/each}
+								</div>
+							{/if}
+						</div>
+						<p class="text-secondary text-sm mb-4">
+							{char.traits.element} / {char.traits.spirit} / {char.traits.sex}
+						</p>
+						{#if charAchievements.length > 0}
+							<p class="text-xs text-[var(--color-success)] mb-4">
+								Trial Complete ({charAchievements.length} {charAchievements.length === 1 ? 'victory' : 'victories'})
+							</p>
+						{/if}
+						<button
+							class="btn btn-primary w-full"
+							on:click={() => verifyCharacter(char.rollBlockHeight)}
+						>
+							Verify
+						</button>
+					</div>
+				{/each}
+			</div>
+		</section>
+	{/if}
+
+	{#if state === 'loading-verify'}
+		<section class="card glow-gold text-center">
+			<div class="dice-rolling text-4xl mb-4">&#128270;</div>
+			<p class="text-secondary">Verifying character...</p>
+		</section>
+	{/if}
+
+	{#if state === 'success' && verificationResult}
+		<section class="card glow-gold mb-6">
+			<div class="flex items-center justify-between mb-6">
+				<h2 class="text-2xl text-accent">Verification Results</h2>
+				<button class="btn btn-secondary text-sm" on:click={backToSelect}>Back</button>
+			</div>
+
+			<!-- Verification Checklist -->
+			{#if verificationResult.verification}
+				<div class="bg-elevated rounded-lg p-4 mb-6">
+					<div class="grid grid-cols-2 gap-4 mb-4">
+						<div class="flex items-center gap-2">
+							{#if verificationResult.verification.seedHashValid}
+								<span class="text-[var(--color-success)] text-xl">&#10003;</span>
+							{:else}
+								<span class="text-[var(--color-error)] text-xl">&#10007;</span>
+							{/if}
+							<span class="text-secondary">Seed Hash Valid</span>
+						</div>
+						<div class="flex items-center gap-2">
+							{#if verificationResult.verification.blockHashValid}
+								<span class="text-[var(--color-success)] text-xl">&#10003;</span>
+							{:else}
+								<span class="text-[var(--color-error)] text-xl">&#10007;</span>
+							{/if}
+							<span class="text-secondary">Block Hash Valid</span>
+						</div>
+						<div class="flex items-center gap-2">
+							{#if verificationResult.verification.statsValid}
+								<span class="text-[var(--color-success)] text-xl">&#10003;</span>
+							{:else}
+								<span class="text-[var(--color-error)] text-xl">&#10007;</span>
+							{/if}
+							<span class="text-secondary">Stats Valid</span>
+						</div>
+						<div class="flex items-center gap-2">
+							{#if verificationResult.verification.traitsValid}
+								<span class="text-[var(--color-success)] text-xl">&#10003;</span>
+							{:else}
+								<span class="text-[var(--color-error)] text-xl">&#10007;</span>
+							{/if}
+							<span class="text-secondary">Traits Valid</span>
+						</div>
+					</div>
+
+					<!-- Overall verdict -->
+					<div class="text-center py-4 border-t border-[var(--color-border)]">
+						{#if verificationResult.verification.allValid}
+							<p class="text-[var(--color-success)] text-2xl font-bold">
+								&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552; VERIFIED &#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;
+							</p>
+						{:else}
+							<p class="text-[var(--color-error)] text-2xl font-bold">
+								&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552; NOT VERIFIED &#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;
+							</p>
+						{/if}
+					</div>
+				</div>
+			{/if}
+
+			<!-- Character Display -->
+			{#if verificationResult.character}
+				<div class="mb-6">
+					<h3 class="text-xl text-accent text-center mb-4">
+						CHARACTER: {verificationResult.character.name}
+					</h3>
+
+					<!-- Stats -->
+					<div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+						{#each Object.entries(verificationResult.character.stats) as [statName, stat]}
+							<div class="bg-elevated rounded-lg p-4 text-center">
+								<p class="text-sm text-secondary uppercase">{STAT_NAMES[statName] || statName}</p>
+								<p class="stat-value">{stat.total}</p>
+								<p class="stat-modifier {stat.modifier >= 0 ? 'positive' : 'negative'}">
+									({formatModifier(stat.modifier)})
+								</p>
+							</div>
+						{/each}
+					</div>
+
+					<!-- Traits -->
+					<div class="flex flex-wrap gap-4 justify-center mb-6">
+						<div class="bg-elevated rounded-lg px-4 py-2">
+							<span class="text-secondary">Element:</span>
+							<span class="text-accent ml-1">{verificationResult.character.traits.element}</span>
+						</div>
+						<div class="bg-elevated rounded-lg px-4 py-2">
+							<span class="text-secondary">Spirit:</span>
+							<span class="text-accent ml-1">{verificationResult.character.traits.spirit}</span>
+						</div>
+						<div class="bg-elevated rounded-lg px-4 py-2">
+							<span class="text-secondary">Sex:</span>
+							<span class="text-accent ml-1">{verificationResult.character.traits.sex}</span>
+						</div>
+					</div>
+
+					<!-- Achievements -->
+					{#if getCharacterAchievements(verificationResult.character.verification.rollBlockHeight).length > 0}
+						{@const charAchievements = getCharacterAchievements(verificationResult.character.verification.rollBlockHeight)}
+						<div class="mb-6">
+							<h4 class="text-lg text-accent text-center mb-4">
+								Achievements ({charAchievements.length})
+							</h4>
+							<div class="grid gap-4">
+								{#each charAchievements as achievement, i}
+									{@const verifyResult = achievementVerificationResults.get(achievement.completedAtBlock)}
+									{@const canVerify = achievement.bossSceneBlockHash && achievement.playerActions}
+									<div class="bg-elevated rounded-lg p-4 border {verifyResult?.valid ? 'border-[var(--color-success)]' : verifyResult ? 'border-[var(--color-error)]' : 'border-[var(--color-border)]'}">
+										<div class="flex items-center justify-between mb-2">
+											<div class="flex items-center gap-2">
+												<span class="text-2xl">{achievement.difficulty === 'hard' ? '🏆' : '🎖️'}</span>
+												<span class="text-[var(--color-success)] font-bold">
+													Primordial Trial Complete
+												</span>
+											</div>
+											<span class="text-xs text-secondary">
+												{achievement.difficulty === 'hard' ? 'Hard Mode' : 'Standard'}
+											</span>
+										</div>
+										<div class="grid grid-cols-3 gap-4 text-sm mb-3">
+											<div>
+												<span class="text-secondary">Final HP:</span>
+												<span class="text-primary ml-1">{achievement.finalHp}</span>
+											</div>
+											<div>
+												<span class="text-secondary">Rounds:</span>
+												<span class="text-primary ml-1">{achievement.roundsToWin}</span>
+											</div>
+											<div>
+												<span class="text-secondary">Block:</span>
+												<span class="text-primary ml-1">{achievement.completedAtBlock}</span>
+											</div>
+										</div>
+
+										<!-- Verification Status -->
+										{#if verifyResult}
+											<div class="border-t border-[var(--color-border)] pt-3 mt-3">
+												{#if verifyResult.valid}
+													<div class="flex items-center gap-2 text-[var(--color-success)]">
+														<span class="text-xl">&#10003;</span>
+														<span class="font-bold">REPLAY VERIFIED</span>
+													</div>
+													<p class="text-xs text-secondary mt-1">
+														Combat replay matched: {verifyResult.expectedRounds} rounds, {verifyResult.expectedFinalHp} HP remaining
+													</p>
+												{:else}
+													<div class="flex items-center gap-2 text-[var(--color-error)]">
+														<span class="text-xl">&#10007;</span>
+														<span class="font-bold">VERIFICATION FAILED</span>
+													</div>
+													<p class="text-xs text-secondary mt-1">
+														{verifyResult.error || `Expected: ${verifyResult.expectedRounds} rounds, ${verifyResult.expectedFinalHp} HP`}
+													</p>
+												{/if}
+											</div>
+										{:else if canVerify}
+											<div class="border-t border-[var(--color-border)] pt-3 mt-3">
+												<button
+													class="btn btn-secondary text-sm w-full"
+													on:click={() => verifyAchievement(achievement)}
+													disabled={verifyingAchievement === achievement.completedAtBlock}
+												>
+													{#if verifyingAchievement === achievement.completedAtBlock}
+														Verifying...
+													{:else}
+														Verify Combat Replay
+													{/if}
+												</button>
+											</div>
+										{:else}
+											<div class="border-t border-[var(--color-border)] pt-3 mt-3">
+												<p class="text-xs text-secondary italic">
+													Legacy achievement (missing replay data)
+												</p>
+											</div>
+										{/if}
+
+										<!-- Achievement Proof Details (Collapsible) -->
+										{#if canVerify}
+											<details class="mt-3">
+												<summary class="cursor-pointer text-xs text-accent">Proof Details</summary>
+												<div class="mt-2 space-y-1 text-xs">
+													<p>
+														<span class="text-secondary">Boss Seed:</span>
+														<span class="hash">{truncateHash(achievement.bossSceneSeed)}</span>
+													</p>
+													<p>
+														<span class="text-secondary">Block Hash:</span>
+														<span class="hash">{truncateHash(achievement.bossSceneBlockHash || '')}</span>
+													</p>
+													<p>
+														<span class="text-secondary">Actions:</span>
+														<span class="text-primary">{achievement.playerActions?.length || 0} moves</span>
+													</p>
+												</div>
+											</details>
+										{/if}
+									</div>
+								{/each}
+							</div>
+						</div>
+					{/if}
+				</div>
+
+				<!-- Verification Details (Collapsible) -->
+				<details class="bg-elevated rounded-lg p-4">
+					<summary class="cursor-pointer text-accent">Verification Details</summary>
+					<div class="mt-4 space-y-2 text-xs">
+						<p>
+							<span class="text-secondary">Client Seed:</span>
+							<span class="hash" title={verificationResult.character.verification.clientSeed}>
+								{truncateHash(verificationResult.character.verification.clientSeed)}
+							</span>
+						</p>
+						<p>
+							<span class="text-secondary">Client Seed Hash:</span>
+							<span class="hash" title={verificationResult.character.verification.clientSeedHash}>
+								{truncateHash(verificationResult.character.verification.clientSeedHash)}
+							</span>
+						</p>
+						<p>
+							<span class="text-secondary">Roll Block Height:</span>
+							<span class="hash">{verificationResult.character.verification.rollBlockHeight}</span>
+						</p>
+						<p>
+							<span class="text-secondary">Roll Block Hash:</span>
+							<span class="hash" title={verificationResult.character.verification.rollBlockHash}>
+								{truncateHash(verificationResult.character.verification.rollBlockHash)}
+							</span>
+						</p>
+						<p>
+							<span class="text-secondary">Commitment Block Height:</span>
+							<span class="hash">{verificationResult.character.verification.commitmentBlockHeight}</span>
+						</p>
+						<p>
+							<span class="text-secondary">Identity Address:</span>
+							<span class="hash" title={verificationResult.character.identityAddress}>
+								{truncateHash(verificationResult.character.identityAddress || '')}
+							</span>
+						</p>
+					</div>
+				</details>
+			{/if}
+		</section>
+
+		<div class="text-center">
+			<button class="btn btn-primary" on:click={reset}>
+				Verify Another Character
+			</button>
+		</div>
+	{/if}
+
+	<section class="mt-8 text-center text-secondary text-sm">
+		<p>
+			<a href="/" class="text-accent hover:underline">Create a character</a>
+		</p>
+	</section>
+</main>

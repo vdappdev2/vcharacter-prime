@@ -1,0 +1,173 @@
+@import 'tailwindcss';
+
+/* Mythic/Primordial Theme */
+
+/* Import fonts */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* Theme variables using @theme */
+@theme {
+  /* Primordial Colors */
+  --color-primordial-obsidian: #1a1a2e;
+  --color-primordial-void: #0f0f1a;
+  --color-primordial-slate: #16213e;
+  --color-primordial-ash: #94a3b8;
+  --color-primordial-bone: #f1f5f9;
+  --color-primordial-gold: #d4af37;
+  --color-primordial-ember: #e25822;
+  --color-primordial-blood: #8b0000;
+  --color-primordial-forest: #228b22;
+  --color-primordial-azure: #4169e1;
+  --color-primordial-storm: #6a5acd;
+
+  /* Fonts */
+  --font-display: 'Cinzel', serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+/* Base styles */
+:root {
+  /* Dark mode (default for mythic theme) */
+  --color-bg: #0f0f1a;
+  --color-surface: #1a1a2e;
+  --color-surface-elevated: #16213e;
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-border: #2d2d44;
+  --color-accent: #d4af37;
+  --color-success: #228b22;
+  --color-error: #8b0000;
+  --color-info: #4169e1;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  line-height: 1.6;
+}
+
+/* Display headings use Cinzel */
+h1, h2, h3, .display-font {
+  font-family: var(--font-display);
+}
+
+/* Hash and code display styling */
+.hash, code {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  letter-spacing: 0.025em;
+  word-break: break-all;
+}
+
+/* Utility classes for theme colors */
+.bg-surface { background-color: var(--color-surface); }
+.bg-elevated { background-color: var(--color-surface-elevated); }
+.text-primary { color: var(--color-text-primary); }
+.text-secondary { color: var(--color-text-secondary); }
+.text-accent { color: var(--color-accent); }
+.border-theme { border-color: var(--color-border); }
+
+/* Focus styles */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Button base styles */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--color-accent) 0%, #b8941f 100%);
+  color: #0f0f1a;
+  border: 1px solid var(--color-accent);
+}
+
+.btn-primary:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+}
+
+.btn-secondary {
+  background-color: var(--color-surface-elevated);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+}
+
+.btn-secondary:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* Card styles */
+.card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+}
+
+.card-elevated {
+  background-color: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+}
+
+/* Stat display */
+.stat-value {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.stat-modifier {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+}
+
+.stat-modifier.positive {
+  color: var(--color-success);
+}
+
+.stat-modifier.negative {
+  color: var(--color-error);
+}
+
+/* Dice animation */
+@keyframes dice-roll {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(90deg) scale(1.1); }
+  50% { transform: rotate(180deg) scale(1); }
+  75% { transform: rotate(270deg) scale(1.1); }
+}
+
+.dice-rolling {
+  animation: dice-roll 0.5s ease-in-out infinite;
+}
+
+/* Glow effect for important elements */
+.glow-gold {
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.2);
+}
+
+/* Divider with mythic styling */
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-border), transparent);
+}
