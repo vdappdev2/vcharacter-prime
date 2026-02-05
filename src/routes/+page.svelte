@@ -232,10 +232,11 @@
 			storageRequestId = data.requestId;
 			storageDeeplinkUri = data.deeplinkUri;
 
-			// Generate QR code
+			// Generate QR code - use low error correction to reduce density for large data
 			storageQrDataUrl = await QRCode.toDataURL(storageDeeplinkUri, {
-				width: 400,
+				width: 512,
 				margin: 2,
+				errorCorrectionLevel: 'L',
 				color: { dark: '#000000', light: '#ffffff' },
 			});
 
@@ -497,7 +498,7 @@
 
 			{#if storageQrDataUrl}
 				<div class="flex justify-center mb-6">
-					<img src={storageQrDataUrl} alt="Scan with Verus Mobile" class="rounded-lg bg-white p-2" width="256" height="256" />
+					<img src={storageQrDataUrl} alt="Scan with Verus Mobile" class="rounded-lg bg-white p-2" width="300" height="300" />
 				</div>
 			{/if}
 

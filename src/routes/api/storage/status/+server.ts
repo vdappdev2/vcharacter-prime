@@ -8,7 +8,11 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { consumeStorageResponse, isKvConfigured } from '$lib/server/kv';
-import { IdentityUpdateResponse } from 'verus-typescript-primitives';
+import {
+	GenericRequest,
+	IdentityUpdateResponseOrdinalVDXFObject,
+	IdentityUpdateResponseDetails,
+} from 'verus-typescript-primitives';
 
 export const GET: RequestHandler = async ({ url }) => {
 	if (!isKvConfigured()) {
@@ -27,25 +31,32 @@ export const GET: RequestHandler = async ({ url }) => {
 			return json({ status: 'pending' });
 		}
 
-		// Parse the response to extract txid
-		let response: IdentityUpdateResponse;
+		// Parse the response (GenericRequest envelope containing IdentityUpdateResponseOrdinalVDXFObject)
+		let response: GenericRequest;
 		try {
-			if (responseData.startsWith('verusid://')) {
-				response = IdentityUpdateResponse.fromWalletDeeplinkUri(responseData);
+			if (responseData.startsWith('verusid://') || responseData.includes('://')) {
+				response = GenericRequest.fromWalletDeeplinkUri(responseData);
 			} else {
-				response = IdentityUpdateResponse.fromQrString(responseData);
+				response = GenericRequest.fromQrString(responseData);
 			}
 		} catch {
 			return json({ error: 'Invalid response data format' }, { status: 400 });
 		}
 
-		const txidBuffer = response.details.txid;
+		// Extract IdentityUpdateResponseDetails from the first detail
+		const detail = response.details[0];
+		if (!(detail instanceof IdentityUpdateResponseOrdinalVDXFObject)) {
+			return json({ error: 'Response does not contain identity update response' }, { status: 400 });
+		}
+
+		const responseDetails = detail.data as IdentityUpdateResponseDetails;
+		const txidBuffer = responseDetails.txid;
 		if (!txidBuffer) {
 			return json({ error: 'No txid in response' }, { status: 400 });
 		}
 
 		// txid is stored in natural order, reverse for display
-		const txid = Buffer.from(txidBuffer).reverse().toString('hex');
+		const txid = txidBuffer.reverse().toString('hex');
 
 		return json({
 			status: 'stored',

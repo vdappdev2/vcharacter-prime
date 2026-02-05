@@ -2,18 +2,18 @@
  * Identity Update Module (Server-Side Only)
  *
  * Creates signed identity update requests for on-chain storage.
+ * Uses the GenericRequest pattern for wallet compatibility.
  * Stateless - no server-side storage required.
  */
 
 import { VerusIdInterface } from 'verusid-ts-client';
 import {
-	IdentityUpdateRequest,
 	IdentityUpdateRequestDetails,
-	PartialIdentity,
-	ResponseUri,
-	IdentityID,
-	VerusIDSignature,
-	IDENTITY_AUTH_SIG_VDXF_KEY,
+	GenericRequest,
+	IdentityUpdateRequestOrdinalVDXFObject,
+	VerifiableSignatureData,
+	CompactIAddressObject,
+	ResponseURI,
 } from 'verus-typescript-primitives';
 // @ts-ignore - no types available
 import { BN } from 'bn.js';
@@ -49,7 +49,7 @@ export function isStorageConfigured(): boolean {
 }
 
 /**
- * Create a storage request for a character
+ * Create a storage request for a character using GenericRequest pattern
  */
 export async function createCharacterStorageRequest(
 	character: StoredCharacter,
@@ -67,7 +67,6 @@ export async function createCharacterStorageRequest(
 	const isTestnet = VERUS_RPC.chainId === 'vrsctest';
 
 	const requestId = generateRandomIAddress();
-	const createdAt = new BN(Math.floor(Date.now() / 1000));
 
 	// Build contentmultimap for the character proof
 	const contentmultimap = buildCharacterContentMap(character);
@@ -77,62 +76,59 @@ export async function createCharacterStorageRequest(
 	const name = identityInfo.identity.name;
 	const parent = identityInfo.identity.parent;
 
-	const identity = PartialIdentity.fromJson({
+	// Build identity update details from CLI-style JSON
+	const identityChanges = {
 		name,
 		parent,
 		contentmultimap,
+	};
+
+	const details = IdentityUpdateRequestDetails.fromCLIJson(identityChanges, {
+		requestid: requestId,
 	});
 
 	// Include requestId in callback URL for matching
 	const callbackWithRequestId = `${callbackUrl}&requestId=${requestId}`;
 
-	const details = new IdentityUpdateRequestDetails({
-		requestid: new BN(Date.now().toString()),
-		createdat: createdAt,
-		identity,
-		systemid: IdentityID.fromAddress(chainId),
-		responseuris: [
-			ResponseUri.fromUriString(callbackWithRequestId, ResponseUri.TYPE_REDIRECT),
+	// Build response URIs (TYPE_REDIRECT = GET redirect)
+	const responseUris = [
+		ResponseURI.fromUriString(callbackWithRequestId, ResponseURI.TYPE_REDIRECT),
+	];
+
+	// Create GenericRequest with IdentityUpdateRequestOrdinalVDXFObject
+	const request = new GenericRequest({
+		details: [
+			new IdentityUpdateRequestOrdinalVDXFObject({
+				data: details,
+			}),
 		],
+		createdAt: new BN(Math.floor(Date.now() / 1000)),
+		responseURIs: responseUris,
+	});
+
+	// Initialize signature metadata (library will fetch identity/height as needed)
+	request.signature = new VerifiableSignatureData({
+		systemID: CompactIAddressObject.fromAddress(chainId),
+		identityID: CompactIAddressObject.fromAddress(SERVICE_IDENTITY.iAddress),
 	});
 
 	if (isTestnet) {
-		details.toggleIsTestnet();
+		request.setIsTestnet();
 	}
 
-	const request = new IdentityUpdateRequest({
-		details,
-		systemid: IdentityID.fromAddress(chainId),
-	});
-
-	// Sign the request
+	// Sign the request - library handles identity validation and height fetching
 	const verusId = getVerusIdInterface();
-	const hashToSign = request.getDetailsHash(0);
-
-	const signatureBase64 = await verusId.signHash(
-		SERVICE_IDENTITY.name,
-		hashToSign,
-		SERVICE_IDENTITY_WIF
-	);
-
-	const signature = new VerusIDSignature(
-		{ signature: signatureBase64 },
-		IDENTITY_AUTH_SIG_VDXF_KEY
-	);
-
-	request.signature = signature;
-	request.signingid = IdentityID.fromAddress(SERVICE_IDENTITY.iAddress);
-	request.setSigned();
+	const signedRequest = await verusId.signGenericRequest(request, SERVICE_IDENTITY_WIF);
 
 	return {
 		requestId,
-		qrString: request.toQrString(),
-		deeplinkUri: request.toWalletDeeplinkUri(),
+		qrString: signedRequest.toWalletDeeplinkUri(),
+		deeplinkUri: signedRequest.toWalletDeeplinkUri(),
 	};
 }
 
 /**
- * Create a storage request for an achievement
+ * Create a storage request for an achievement using GenericRequest pattern
  */
 export async function createAchievementStorageRequest(
 	achievement: AchievementProofData,
@@ -151,7 +147,6 @@ export async function createAchievementStorageRequest(
 	const isTestnet = VERUS_RPC.chainId === 'vrsctest';
 
 	const requestId = generateRandomIAddress();
-	const createdAt = new BN(Math.floor(Date.now() / 1000));
 
 	const contentmultimap = buildAchievementContentMap(achievement);
 
@@ -159,54 +154,53 @@ export async function createAchievementStorageRequest(
 	const name = identityInfo.identity.name;
 	const parent = identityInfo.identity.parent;
 
-	const identity = PartialIdentity.fromJson({
+	// Build identity update details from CLI-style JSON
+	const identityChanges = {
 		name,
 		parent,
 		contentmultimap,
+	};
+
+	const details = IdentityUpdateRequestDetails.fromCLIJson(identityChanges, {
+		requestid: requestId,
 	});
 
+	// Include requestId in callback URL for matching
 	const callbackWithRequestId = `${callbackUrl}&requestId=${requestId}`;
 
-	const details = new IdentityUpdateRequestDetails({
-		requestid: new BN(Date.now().toString()),
-		createdat: createdAt,
-		identity,
-		systemid: IdentityID.fromAddress(chainId),
-		responseuris: [
-			ResponseUri.fromUriString(callbackWithRequestId, ResponseUri.TYPE_REDIRECT),
+	// Build response URIs (TYPE_REDIRECT = GET redirect)
+	const responseUris = [
+		ResponseURI.fromUriString(callbackWithRequestId, ResponseURI.TYPE_REDIRECT),
+	];
+
+	// Create GenericRequest with IdentityUpdateRequestOrdinalVDXFObject
+	const request = new GenericRequest({
+		details: [
+			new IdentityUpdateRequestOrdinalVDXFObject({
+				data: details,
+			}),
 		],
+		createdAt: new BN(Math.floor(Date.now() / 1000)),
+		responseURIs: responseUris,
+	});
+
+	// Initialize signature metadata (library will fetch identity/height as needed)
+	request.signature = new VerifiableSignatureData({
+		systemID: CompactIAddressObject.fromAddress(chainId),
+		identityID: CompactIAddressObject.fromAddress(SERVICE_IDENTITY.iAddress),
 	});
 
 	if (isTestnet) {
-		details.toggleIsTestnet();
+		request.setIsTestnet();
 	}
 
-	const request = new IdentityUpdateRequest({
-		details,
-		systemid: IdentityID.fromAddress(chainId),
-	});
-
+	// Sign the request - library handles identity validation and height fetching
 	const verusId = getVerusIdInterface();
-	const hashToSign = request.getDetailsHash(0);
-
-	const signatureBase64 = await verusId.signHash(
-		SERVICE_IDENTITY.name,
-		hashToSign,
-		SERVICE_IDENTITY_WIF
-	);
-
-	const signature = new VerusIDSignature(
-		{ signature: signatureBase64 },
-		IDENTITY_AUTH_SIG_VDXF_KEY
-	);
-
-	request.signature = signature;
-	request.signingid = IdentityID.fromAddress(SERVICE_IDENTITY.iAddress);
-	request.setSigned();
+	const signedRequest = await verusId.signGenericRequest(request, SERVICE_IDENTITY_WIF);
 
 	return {
 		requestId,
-		qrString: request.toQrString(),
-		deeplinkUri: request.toWalletDeeplinkUri(),
+		qrString: signedRequest.toWalletDeeplinkUri(),
+		deeplinkUri: signedRequest.toWalletDeeplinkUri(),
 	};
 }

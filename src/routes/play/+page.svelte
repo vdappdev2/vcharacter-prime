@@ -568,10 +568,11 @@
 			achievementRequestId = data.requestId;
 			achievementDeeplinkUri = data.deeplinkUri;
 
-			// Generate QR code image
+			// Generate QR code image - use low error correction to reduce density for large data
 			achievementQrDataUrl = await QRCode.toDataURL(achievementDeeplinkUri, {
-				width: 256,
+				width: 512,
 				margin: 2,
+				errorCorrectionLevel: 'L',
 				color: { dark: '#000000', light: '#ffffff' },
 			});
 
@@ -1244,8 +1245,8 @@
 									src={achievementQrDataUrl}
 									alt="Scan with Verus Mobile"
 									class="rounded-lg bg-white p-2"
-									width="200"
-									height="200"
+									width="300"
+									height="300"
 								/>
 							</div>
 						{/if}
