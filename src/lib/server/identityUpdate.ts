@@ -84,7 +84,7 @@ export async function createCharacterStorageRequest(
 	};
 
 	const details = IdentityUpdateRequestDetails.fromCLIJson(identityChanges, {
-		requestid: requestId,
+		requestid: CompactIAddressObject.fromAddress(requestId).toJson(),
 	});
 
 	// Include requestId in callback URL for matching
@@ -162,7 +162,7 @@ export async function createAchievementStorageRequest(
 	};
 
 	const details = IdentityUpdateRequestDetails.fromCLIJson(identityChanges, {
-		requestid: requestId,
+		requestid: CompactIAddressObject.fromAddress(requestId).toJson(),
 	});
 
 	// Include requestId in callback URL for matching

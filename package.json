@@ -33,7 +33,7 @@
 		"@upstash/redis": "^1.36.1",
 		"bs58check": "4.0.0",
 		"qrcode": "^1.5.4",
-		"verus-typescript-primitives": "git+https://github.com/michaeltout/verus-typescript-primitives.git#generic-signed-request",
-		"verusid-ts-client": "git+https://github.com/michaeltout/verusid-ts-client.git#generic-request-changes"
+		"verus-typescript-primitives": "github:VerusCoin/verus-typescript-primitives",
+		"verusid-ts-client": "https://github.com/VerusCoin/verusid-ts-client.git"
 	}
 }
