@@ -4,6 +4,8 @@
  * Central configuration adapted from vtimestamp
  */
 
+import { PUBLIC_VERUS_NETWORK, PUBLIC_SWITCH_NETWORK_URL } from '$env/static/public';
+
 // Environment detection
 export const isDev = import.meta.env.DEV;
 export const isProd = import.meta.env.PROD;
@@ -22,8 +24,12 @@ export const RPC_ENDPOINTS = {
   },
 };
 
-// Current network (change to 'mainnet' for production)
-export const CURRENT_NETWORK: 'testnet' | 'mainnet' = 'testnet';
+// Current network - read from environment variable
+export const CURRENT_NETWORK: 'testnet' | 'mainnet' =
+  PUBLIC_VERUS_NETWORK === 'mainnet' ? 'mainnet' : 'testnet';
+
+// URL of the other network's deployment (for the switch link)
+export const SWITCH_NETWORK_URL = PUBLIC_SWITCH_NETWORK_URL || '';
 
 export const VERUS_RPC = {
   // Public daemon RPC endpoints (primary with fallback)
@@ -137,6 +143,6 @@ export const COMMITMENT_CONFIG = {
 export const APP_META = {
   name: 'vcharacter-prime',
   description: 'Provably fair character creation on Verus',
-  version: '0.1.0',
+  version: '0.3.0',
   network: CURRENT_NETWORK,
 };

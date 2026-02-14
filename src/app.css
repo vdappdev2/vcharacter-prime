@@ -171,3 +171,35 @@ h1, h2, h3, .display-font {
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--color-border), transparent);
 }
+
+/* Network badge */
+.network-badge {
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+}
+
+.network-badge-testnet {
+  background-color: #fbbf24;
+  color: #78350f;
+}
+
+.network-badge-mainnet {
+  background-color: #34d399;
+  color: #064e3b;
+}
+
+/* Network switch link */
+.network-switch-link {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.network-switch-link:hover {
+  color: var(--color-accent);
+}
