@@ -6,7 +6,7 @@
  *
  * This endpoint:
  * 1. Queries the identity's contentmultimap
- * 2. Extracts character data from the characterProof key
+ * 2. Extracts character data from the primeInaugural key
  * 3. Re-derives the character using the stored seeds
  * 4. Compares to verify provably fair creation
  */
@@ -30,14 +30,14 @@ export const GET: RequestHandler = async ({ url }) => {
   try {
     // Get the identity content filtered by our VDXF key
     // This is more reliable than getidentity as it works even if the identity has been updated since
-    const characterProofKey = VDXF_KEYS.characterProof;
+    const primeInauguralKey = VDXF_KEYS.primeInaugural;
     const identityContent = await getIdentityContent(
       identity,
       0,           // heightStart
       0,           // heightEnd (0 = max)
       false,       // txProofs
       0,           // txProofHeight
-      characterProofKey  // filter by vcharacter.prime key
+      primeInauguralKey  // filter by prime.inaugural key
     );
 
     if (!identityContent) {
@@ -50,7 +50,7 @@ export const GET: RequestHandler = async ({ url }) => {
     // Check if the identity has character content
     const contentMultiMap = identityContent.identity?.contentmultimap;
 
-    if (!contentMultiMap || !contentMultiMap[characterProofKey]) {
+    if (!contentMultiMap || !contentMultiMap[primeInauguralKey]) {
       return json({
         valid: false,
         error: 'No character proof found on this identity',

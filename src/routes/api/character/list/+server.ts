@@ -20,14 +20,14 @@ export const GET: RequestHandler = async ({ url }) => {
 
   try {
     // Get the identity content filtered by our VDXF key
-    const characterProofKey = VDXF_KEYS.characterProof;
+    const primeInauguralKey = VDXF_KEYS.primeInaugural;
     const identityContent = await getIdentityContent(
       identity,
       0,           // heightStart
       0,           // heightEnd (0 = max)
       false,       // txProofs
       0,           // txProofHeight
-      characterProofKey  // filter by vcharacter.prime key
+      primeInauguralKey  // filter by prime.inaugural key
     );
 
     if (!identityContent) {
@@ -40,7 +40,7 @@ export const GET: RequestHandler = async ({ url }) => {
     // Check if the identity has character content
     const contentMultiMap = identityContent.identity?.contentmultimap;
 
-    if (!contentMultiMap || !contentMultiMap[characterProofKey]) {
+    if (!contentMultiMap || !contentMultiMap[primeInauguralKey]) {
       return json({
         identity: identity,
         identityAddress: identityContent.identity?.identityaddress,

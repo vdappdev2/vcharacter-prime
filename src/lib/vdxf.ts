@@ -4,7 +4,7 @@
  * Helper functions for building ContentMultiMap structures
  * for storing character data on-chain.
  *
- * Schema: testidx.vrsc::vcharacter.prime (outer key)
+ * Schema: prime.inaugural (outer key)
  *   Labels (inside DataDescriptor):
  *   - .name   → Character display name (string)
  *   - .stats  → Stats object (strength, dexterity, etc.)
@@ -80,7 +80,7 @@ function buildDataDescriptor(
  * Creates the complete structure for storing character proof on-chain.
  * Uses a single outer key (vcharacter.prime) with labeled DataDescriptor entries.
  *
- * Schema: testidx.vrsc::vcharacter.prime (outer key)
+ * Schema: prime.inaugural (outer key)
  *   Labels inside DataDescriptor:
  *   - .name   → Character display name
  *   - .stats  → Stats JSON (strength, dexterity, etc.)
@@ -135,7 +135,7 @@ export function buildCharacterContentMap(character: StoredCharacter): ContentMul
 
   // Return ContentMultiMap with single outer key containing all entries
   return {
-    [VDXF_KEYS.characterProof]: entries,
+    [VDXF_KEYS.primeInaugural]: entries,
   };
 }
 
@@ -269,7 +269,7 @@ function extractStringValue(descriptor: DataDescriptor): string | undefined {
  */
 export function parseCharacterContentMap(contentMap: Record<string, unknown>): ParsedCharacterData | null {
   // Get entries from the outer key
-  const entries = contentMap[VDXF_KEYS.characterProof] as DataDescriptorWrapper[] | undefined;
+  const entries = contentMap[VDXF_KEYS.primeInaugural] as DataDescriptorWrapper[] | undefined;
   if (!entries || !Array.isArray(entries) || entries.length === 0) {
     return null;
   }
@@ -330,7 +330,7 @@ export function parseCharacterContentMap(contentMap: Record<string, unknown>): P
  */
 export function parseAllCharacters(contentMap: Record<string, unknown>): ParsedCharacterData[] {
   // Get entries from the outer key
-  const entries = contentMap[VDXF_KEYS.characterProof] as DataDescriptorWrapper[] | undefined;
+  const entries = contentMap[VDXF_KEYS.primeInaugural] as DataDescriptorWrapper[] | undefined;
   if (!entries || !Array.isArray(entries) || entries.length === 0) {
     return [];
   }
