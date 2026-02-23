@@ -146,6 +146,6 @@ export const COMMITMENT_CONFIG = {
 export const APP_META = {
   name: 'vcharacter-prime',
   description: 'Provably fair character creation on Verus',
-  version: '0.4.0',
+  version: '0.4.1',
   network: CURRENT_NETWORK,
 };
