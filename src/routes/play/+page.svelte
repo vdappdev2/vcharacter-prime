@@ -70,7 +70,7 @@
 	let waitingForBlock: boolean = false;
 	let currentBlockHeight: number = 0;
 	let rollCounter: number = 0;
-	let blockPollInterval: ReturnType<typeof setInterval> | null = null;
+	let blockPollTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	// ========== Boss Fight Proof State (for achievement) ==========
 	let bossSceneSeed: string = '';
@@ -86,11 +86,11 @@
 	let achievementStored: boolean = false;
 	let achievementTxid: string = '';
 	let storingAchievement: boolean = false;
-	let achievementPollInterval: ReturnType<typeof setInterval> | null = null;
+	let achievementPollTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	onDestroy(() => {
-		if (blockPollInterval) clearInterval(blockPollInterval);
-		if (achievementPollInterval) clearInterval(achievementPollInterval);
+		if (blockPollTimeout) clearTimeout(blockPollTimeout);
+		if (achievementPollTimeout) clearTimeout(achievementPollTimeout);
 	});
 
 	// ========== Provably Fair Dice Functions ==========
@@ -118,11 +118,11 @@
 	}
 
 	function startBlockPolling() {
-		if (blockPollInterval) {
-			clearInterval(blockPollInterval);
+		if (blockPollTimeout) {
+			clearTimeout(blockPollTimeout);
 		}
 
-		blockPollInterval = setInterval(async () => {
+		blockPollTimeout = setTimeout(async function poll() {
 			try {
 				const response = await fetch(`/api/game/block?waitFor=${sceneBlockHeight}`);
 				const data = await response.json();
@@ -132,15 +132,15 @@
 				if (data.ready) {
 					sceneBlockHash = data.blockHash;
 					waitingForBlock = false;
-					if (blockPollInterval) {
-						clearInterval(blockPollInterval);
-						blockPollInterval = null;
-					}
+					blockPollTimeout = null;
+				} else {
+					blockPollTimeout = setTimeout(poll, 3000);
 				}
 			} catch (err) {
 				console.error('Block polling error:', err);
+				blockPollTimeout = setTimeout(poll, 3000);
 			}
-		}, 3000); // Poll every 3 seconds
+		}, 3000);
 	}
 
 	async function deriveRoll(label: string, dieSize: number): Promise<number> {
@@ -587,21 +587,23 @@
 	}
 
 	function startAchievementPolling() {
-		if (achievementPollInterval) clearInterval(achievementPollInterval);
+		if (achievementPollTimeout) clearTimeout(achievementPollTimeout);
 
-		achievementPollInterval = setInterval(async () => {
+		achievementPollTimeout = setTimeout(async function poll() {
 			try {
 				const response = await fetch(`/api/storage/status?requestId=${achievementRequestId}`);
 				const data = await response.json();
 
 				if (data.status === 'stored') {
-					clearInterval(achievementPollInterval!);
-					achievementPollInterval = null;
+					achievementPollTimeout = null;
 					achievementTxid = data.txid;
 					achievementStored = true;
+				} else {
+					achievementPollTimeout = setTimeout(poll, 3000);
 				}
 			} catch (err) {
 				console.error('Achievement polling error:', err);
+				achievementPollTimeout = setTimeout(poll, 3000);
 			}
 		}, 3000);
 	}
@@ -612,13 +614,13 @@
 
 	function restartGame() {
 		// Stop any polling
-		if (blockPollInterval) {
-			clearInterval(blockPollInterval);
-			blockPollInterval = null;
+		if (blockPollTimeout) {
+			clearTimeout(blockPollTimeout);
+			blockPollTimeout = null;
 		}
-		if (achievementPollInterval) {
-			clearInterval(achievementPollInterval);
-			achievementPollInterval = null;
+		if (achievementPollTimeout) {
+			clearTimeout(achievementPollTimeout);
+			achievementPollTimeout = null;
 		}
 
 		viewState = 'select-identity';

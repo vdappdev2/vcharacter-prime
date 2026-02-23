@@ -51,10 +51,10 @@
 	let storageQrDataUrl = '';
 
 	// Polling
-	let pollInterval: ReturnType<typeof setInterval> | null = null;
+	let pollTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	onDestroy(() => {
-		if (pollInterval) clearInterval(pollInterval);
+		if (pollTimeout) clearTimeout(pollTimeout);
 	});
 
 	// ========== Commitment Flow ==========
@@ -109,21 +109,23 @@
 	}
 
 	function startCommitmentPolling() {
-		if (pollInterval) clearInterval(pollInterval);
+		if (pollTimeout) clearTimeout(pollTimeout);
 
-		pollInterval = setInterval(async () => {
+		pollTimeout = setTimeout(async function poll() {
 			try {
 				const response = await fetch(`/api/commitment/status?seedHash=${clientSeedHash}`);
 				const data = await response.json();
 
 				if (data.status === 'received') {
-					clearInterval(pollInterval!);
-					pollInterval = null;
+					pollTimeout = null;
 					walletResponse = data.responseData;
 					await verifyAndDeriveCharacter();
+				} else {
+					pollTimeout = setTimeout(poll, 3000);
 				}
 			} catch (err) {
 				console.error('Polling error:', err);
+				pollTimeout = setTimeout(poll, 3000);
 			}
 		}, 3000);
 	}
@@ -187,17 +189,19 @@
 	}
 
 	function startBlockPolling() {
-		if (pollInterval) clearInterval(pollInterval);
+		if (pollTimeout) clearTimeout(pollTimeout);
 
-		pollInterval = setInterval(async () => {
+		pollTimeout = setTimeout(async function poll() {
 			try {
 				await verifyAndDeriveCharacter();
-				if (state !== 'waiting_block') {
-					clearInterval(pollInterval!);
-					pollInterval = null;
+				if (state === 'waiting_block') {
+					pollTimeout = setTimeout(poll, 5000);
 				}
 			} catch (err) {
 				console.error('Block polling error:', err);
+				if (state === 'waiting_block') {
+					pollTimeout = setTimeout(poll, 5000);
+				}
 			}
 		}, 5000);
 	}
@@ -248,21 +252,23 @@
 	}
 
 	function startStoragePolling() {
-		if (pollInterval) clearInterval(pollInterval);
+		if (pollTimeout) clearTimeout(pollTimeout);
 
-		pollInterval = setInterval(async () => {
+		pollTimeout = setTimeout(async function poll() {
 			try {
 				const response = await fetch(`/api/storage/status?requestId=${storageRequestId}`);
 				const data = await response.json();
 
 				if (data.status === 'stored') {
-					clearInterval(pollInterval!);
-					pollInterval = null;
+					pollTimeout = null;
 					storageTxid = data.txid;
 					state = 'complete';
+				} else {
+					pollTimeout = setTimeout(poll, 3000);
 				}
 			} catch (err) {
 				console.error('Storage polling error:', err);
+				pollTimeout = setTimeout(poll, 3000);
 			}
 		}, 3000);
 	}
@@ -270,9 +276,9 @@
 	// ========== Helpers ==========
 
 	function reset() {
-		if (pollInterval) {
-			clearInterval(pollInterval);
-			pollInterval = null;
+		if (pollTimeout) {
+			clearTimeout(pollTimeout);
+			pollTimeout = null;
 		}
 		localStorage.removeItem(STORAGE_KEY_SEED);
 		localStorage.removeItem(STORAGE_KEY_HASH);
