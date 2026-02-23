@@ -120,6 +120,9 @@
 					pollTimeout = null;
 					walletResponse = data.responseData;
 					await verifyAndDeriveCharacter();
+					if (state === 'waiting_block') {
+						startBlockPolling();
+					}
 				} else {
 					pollTimeout = setTimeout(poll, 3000);
 				}
@@ -132,7 +135,8 @@
 
 	async function verifyAndDeriveCharacter() {
 		// Only show "rolling" state on first call, not during block polling
-		if (state !== 'waiting_block') {
+		const isBlockPolling = state === 'waiting_block';
+		if (!isBlockPolling) {
 			state = 'rolling';
 		}
 
@@ -153,6 +157,8 @@
 				throw new Error(data.error || 'Verification failed');
 			}
 
+			error = null;
+
 			if (data.status === 'waiting_block') {
 				userIdentity = data.userIdentity;
 				commitmentBlockHeight = data.commitmentBlockHeight;
@@ -160,9 +166,6 @@
 				currentBlockHeight = data.currentHeight;
 				blocksToWait = data.blocksToWait;
 				state = 'waiting_block';
-
-				// Poll for block
-				startBlockPolling();
 			} else if (data.status === 'complete') {
 				// Show rolling animation briefly
 				state = 'rolling';
@@ -181,6 +184,11 @@
 				state = 'naming';
 			}
 		} catch (err) {
+			// During block polling, transient RPC errors are retryable
+			if (isBlockPolling) {
+				console.error('Transient verification error during block wait:', err);
+				return;
+			}
 			error = err instanceof Error ? err.message : 'Unknown error';
 			state = 'idle';
 			localStorage.removeItem(STORAGE_KEY_SEED);
