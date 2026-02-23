@@ -5,7 +5,8 @@
  * This module should only be imported in server-side code (+server.ts files).
  */
 
-import { VERUS_RPC } from '../config';
+import { VERUS_RPC, CHAIN_IDS } from '../config';
+import { VerusIdInterface } from 'verusid-ts-client';
 
 /**
  * RPC Error with code and message from daemon
@@ -280,4 +281,38 @@ export async function getIdentityContent(
     params.push(keepDeleted);
   }
   return rpcCall<IdentityContentInfo>('getidentitycontent', params);
+}
+
+// ============================================================================
+// VerusIdInterface with Fallback
+// ============================================================================
+
+/**
+ * Chain i-address for the current network.
+ * Passed to VerusIdInterface methods to skip redundant getChainId() RPC calls.
+ */
+export const CHAIN_IADDRESS = CHAIN_IDS[VERUS_RPC.chainId === 'vrsctest' ? 'testnet' : 'mainnet'];
+
+function createVerusIdInterface(endpoint: string): VerusIdInterface {
+  return new VerusIdInterface(CHAIN_IADDRESS, endpoint);
+}
+
+/**
+ * Run an operation against VerusIdInterface with automatic endpoint fallback.
+ *
+ * Tries the primary endpoint first. On network/timeout errors, retries
+ * with the fallback endpoint. Follows the same pattern as rpcCall().
+ */
+export async function withVerusIdFallback<T>(
+  operation: (verusId: VerusIdInterface) => Promise<T>
+): Promise<T> {
+  try {
+    return await operation(createVerusIdInterface(VERUS_RPC.endpoint));
+  } catch (error) {
+    if (VERUS_RPC.fallbackEndpoint) {
+      console.log(`Primary VerusIdInterface RPC failed, trying fallback: ${VERUS_RPC.fallbackEndpoint}`);
+      return await operation(createVerusIdInterface(VERUS_RPC.fallbackEndpoint));
+    }
+    throw error;
+  }
 }

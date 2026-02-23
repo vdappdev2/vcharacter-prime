@@ -5,7 +5,6 @@
  * Stateless - no server-side storage required.
  */
 
-import { VerusIdInterface } from 'verusid-ts-client';
 import { randomBytes } from 'crypto';
 // @ts-ignore - no types available
 import bs58check from 'bs58check';
@@ -19,14 +18,10 @@ import {
 	ID_FULLYQUALIFIEDNAME_VDXF_KEY,
 } from 'verus-typescript-primitives';
 import { env } from '$env/dynamic/private';
-import { VERUS_RPC, CHAIN_IDS, SERVICE_IDENTITY } from '../config';
+import { SERVICE_IDENTITY } from '../config';
+import { withVerusIdFallback, CHAIN_IADDRESS } from './verus';
 
 const SERVICE_IDENTITY_WIF = env.SERVICE_IDENTITY_WIF || '';
-
-function getVerusIdInterface(): VerusIdInterface {
-	const chainId = CHAIN_IDS[VERUS_RPC.chainId === 'vrsctest' ? 'testnet' : 'mainnet'];
-	return new VerusIdInterface(chainId, VERUS_RPC.endpoint);
-}
 
 function generateRandomIAddress(): string {
 	const hash = randomBytes(20);
@@ -65,8 +60,6 @@ export async function createCommitmentRequest(
 		throw new Error('SERVICE_IDENTITY_WIF not configured');
 	}
 
-	const verusId = getVerusIdInterface();
-
 	const challengeId = generateRandomIAddress();
 	const sessionId = generateRandomIAddress();
 	const salt = generateRandomIAddress();
@@ -87,10 +80,15 @@ export async function createCommitmentRequest(
 		salt,
 	});
 
-	const request = await verusId.createLoginConsentRequest(
-		SERVICE_IDENTITY.iAddress,
-		challenge,
-		SERVICE_IDENTITY_WIF
+	const request = await withVerusIdFallback((verusId) =>
+		verusId.createLoginConsentRequest(
+			SERVICE_IDENTITY.iAddress,
+			challenge,
+			SERVICE_IDENTITY_WIF,
+			undefined,  // getIdentityResult
+			undefined,  // currentHeight
+			CHAIN_IADDRESS,
+		)
 	);
 
 	return {

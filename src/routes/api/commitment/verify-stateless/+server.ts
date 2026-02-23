@@ -10,17 +10,11 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { VerusIdInterface } from 'verusid-ts-client';
 import { LoginConsentResponse } from 'verus-typescript-primitives';
 import { createHash } from 'crypto';
-import { VERUS_RPC, CHAIN_IDS, COMMITMENT_CONFIG } from '$lib/config';
-import { getIdentity, getBlockCount, getBlockByHeight } from '$lib/server/verus';
+import { COMMITMENT_CONFIG } from '$lib/config';
+import { getIdentity, getBlockCount, getBlockByHeight, withVerusIdFallback, CHAIN_IADDRESS } from '$lib/server/verus';
 import { rollCharacter } from '$lib/dice';
-
-function getVerusIdInterface(): VerusIdInterface {
-	const chainId = CHAIN_IDS[VERUS_RPC.chainId === 'vrsctest' ? 'testnet' : 'mainnet'];
-	return new VerusIdInterface(chainId, VERUS_RPC.endpoint);
-}
 
 function sha256(data: string): string {
 	return createHash('sha256').update(data).digest('hex');
@@ -51,13 +45,6 @@ export const POST: RequestHandler = async ({ request }) => {
 			response.fromBuffer(buffer);
 		} catch (err) {
 			return json({ error: 'Invalid response data format' }, { status: 400 });
-		}
-
-		// Verify the signature
-		const verusId = getVerusIdInterface();
-		const isValid = await verusId.verifyLoginConsentResponse(response);
-		if (!isValid) {
-			return json({ error: 'Invalid signature' }, { status: 400 });
 		}
 
 		// Extract the seedHash from the signed challenge's callback URL
@@ -91,9 +78,17 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ error: 'Missing signing identity or signature' }, { status: 400 });
 		}
 
-		// Get signature info including block height
-		const sigInfo = await verusId.getSignatureInfo(signingId, signature);
-		const commitmentBlockHeight = sigInfo.height;
+		// Verify signature and get signature info in a single fallback-protected call.
+		// Passing chainIAddr avoids a redundant getChainId() RPC inside the library.
+		const { isValid, commitmentBlockHeight } = await withVerusIdFallback(async (verusId) => {
+			const sigInfo = await verusId.getSignatureInfo(signingId, signature, CHAIN_IADDRESS);
+			const valid = await verusId.verifyLoginConsentResponse(response, undefined, CHAIN_IADDRESS);
+			return { isValid: valid, commitmentBlockHeight: sigInfo.height };
+		});
+
+		if (!isValid) {
+			return json({ error: 'Invalid signature' }, { status: 400 });
+		}
 		const rollBlockHeight = commitmentBlockHeight + COMMITMENT_CONFIG.rollBlockDelay;
 
 		// Check if roll block is available
