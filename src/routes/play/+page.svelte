@@ -738,7 +738,7 @@
 			<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 				{#each characters as char}
 					<button
-						class="card-elevated text-left hover:border-accent transition-colors cursor-pointer"
+						class="card-elevated text-left hover:border-accent hover:brightness-125 transition-all cursor-pointer"
 						on:click={() => selectCharacter(char.rollBlockHeight)}
 						disabled={loadingCharacters}
 					>
@@ -851,10 +851,10 @@
 		<!-- Scene: Path Selection -->
 		{#if gameState.currentScene === 'paths'}
 			<section class="card glow-gold">
-				<h2 class="text-2xl mb-4 text-accent">The Three Paths</h2>
+				<h2 class="text-2xl mb-4 text-accent">Choose Your Path</h2>
 
 				<p class="text-secondary mb-6">
-					The sanctum's entrance reveals four passages, each sealed by different means.
+					The sanctum's entrance reveals six passages, each sealed by different means.
 					Choose your path wisely - your abilities will determine which routes are open to you.
 				</p>
 
@@ -893,7 +893,7 @@
 				{#if showingCombatResult && combatMessage}
 					<div class="bg-elevated rounded-lg p-4 mb-6 border-l-4 border-l-accent">
 						<p class="text-primary">{combatMessage}</p>
-						<button class="btn btn-secondary mt-4 text-sm" on:click={dismissCombatMessage}>
+						<button class="btn btn-primary mt-4 text-sm" on:click={dismissCombatMessage}>
 							Continue
 						</button>
 					</div>
@@ -950,7 +950,7 @@
 				<!-- Actions -->
 				{#if !showingCombatResult}
 					<div class="flex flex-wrap gap-4 justify-center">
-						<button class="btn btn-primary" on:click={() => performCombatAction('attack')}>
+						<button class="btn btn-secondary" on:click={() => performCombatAction('attack')}>
 							Attack
 						</button>
 						<button class="btn btn-secondary" on:click={() => performCombatAction('defend')}>
@@ -1110,7 +1110,7 @@
 				{#if showingCombatResult && combatMessage}
 					<div class="bg-elevated rounded-lg p-4 mb-6 border-l-4 border-l-accent">
 						<p class="text-primary">{combatMessage}</p>
-						<button class="btn btn-secondary mt-4 text-sm" on:click={dismissCombatMessage}>
+						<button class="btn btn-primary mt-4 text-sm" on:click={dismissCombatMessage}>
 							Continue
 						</button>
 					</div>
@@ -1157,7 +1157,7 @@
 					{@const outcome = getCombatOutcome(gameState)}
 					{#if outcome === 'ongoing'}
 						<div class="flex flex-wrap gap-4 justify-center">
-							<button class="btn btn-primary" on:click={() => performCombatAction('attack')}>
+							<button class="btn btn-secondary" on:click={() => performCombatAction('attack')}>
 								Attack
 							</button>
 							<button class="btn btn-secondary" on:click={() => performCombatAction('defend')}>

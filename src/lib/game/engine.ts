@@ -119,13 +119,13 @@ export function setOutcome(state: GameState, outcome: 'victory' | 'defeat'): Gam
 // Scene 2: Path Choices
 // ============================================================================
 
-export type PathChoice = 'might' | 'cunning' | 'spirit' | 'shadows';
+export type PathChoice = 'might' | 'cunning' | 'spirit' | 'shadows' | 'endurance' | 'charm';
 
 /**
  * Get available path choices for a character
  */
 export function getPathChoices(character: StoredCharacter): GameChoice[] {
-  const { str, int, wis, dex } = character.stats;
+  const { str, dex, con, int, wis, cha } = character.stats;
 
   return [
     {
@@ -135,6 +135,14 @@ export function getPathChoices(character: StoredCharacter): GameChoice[] {
       requiredValue: 16,
       available: str.total >= 16,
       unavailableReason: str.total < 16 ? `Requires STR 16+ (you have ${str.total})` : undefined,
+    },
+    {
+      id: 'endurance',
+      text: 'Path of Endurance - Endure the gauntlet of elemental fury',
+      requiredStat: 'con',
+      requiredValue: 16,
+      available: con.total >= 16,
+      unavailableReason: con.total < 16 ? `Requires CON 16+ (you have ${con.total})` : undefined,
     },
     {
       id: 'cunning',
@@ -151,6 +159,14 @@ export function getPathChoices(character: StoredCharacter): GameChoice[] {
       requiredValue: 14,
       available: wis.total >= 14,
       unavailableReason: wis.total < 14 ? `Requires WIS 14+ (you have ${wis.total})` : undefined,
+    },
+    {
+      id: 'charm',
+      text: 'Path of Charm - Persuade the gate sentinels to stand aside',
+      requiredStat: 'cha',
+      requiredValue: 14,
+      available: cha.total >= 14,
+      unavailableReason: cha.total < 14 ? `Requires CHA 14+ (you have ${cha.total})` : undefined,
     },
     {
       id: 'shadows',
@@ -203,6 +219,22 @@ export function choosePath(state: GameState, path: PathChoice): GameState {
         scenesRemaining: 99,
       });
       break;
+    case 'endurance':
+      buffs.push({
+        description: 'Ironclad Resolve: +3 HP this session',
+        type: 'buff',
+        value: 3,
+        scenesRemaining: 99,
+      });
+      break;
+    case 'charm':
+      buffs.push({
+        description: 'Disarming Presence: +1 attack this session',
+        type: 'buff',
+        value: 1,
+        scenesRemaining: 99,
+      });
+      break;
     case 'shadows':
       buffs.push({
         description: 'Shadow Walker: +1 defense this session',
@@ -213,11 +245,21 @@ export function choosePath(state: GameState, path: PathChoice): GameState {
       break;
   }
 
+  // Apply immediate effects
+  let hp = state.hp;
+  let maxHp = state.maxHp;
+  if (path === 'endurance') {
+    maxHp += 3;
+    hp += 3;
+  }
+
   return {
     ...state,
     pathChosen: path,
     choices: [...state.choices, `path:${path}`],
     buffs,
+    hp,
+    maxHp,
   };
 }
 
