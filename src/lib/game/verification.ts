@@ -102,10 +102,12 @@ export async function verifyBossFight(
           maxHp,
           currentScene: 'boss',
           choices: [],
+          rolls: [],
+          startedAt: 0,
           buffs,
           debuffs: [],
           spiritAbilityUsed: false,
-        } as GameState);
+        });
 
         spiritAbilityUsed = true;
 
@@ -137,13 +139,13 @@ export async function verifyBossFight(
       }
 
       // Derive rolls for this round
-      const playerAttackRoll = deriveGameRoll(combinedSeed, `player_attack_${rollCounter}`, 20);
+      const playerAttackRoll = await deriveGameRoll(combinedSeed, `player_attack_${rollCounter}`, 20);
       rollCounter++;
-      const playerDamageRoll = deriveGameRoll(combinedSeed, `player_damage_${rollCounter}`, 6) + 2;
+      const playerDamageRoll = (await deriveGameRoll(combinedSeed, `player_damage_${rollCounter}`, 6)) + 2;
       rollCounter++;
-      const enemyAttackRoll = deriveGameRoll(combinedSeed, `enemy_attack_${rollCounter}`, 20);
+      const enemyAttackRoll = await deriveGameRoll(combinedSeed, `enemy_attack_${rollCounter}`, 20);
       rollCounter++;
-      const enemyDamageRoll = deriveGameRoll(combinedSeed, `enemy_damage_${rollCounter}`, 6);
+      const enemyDamageRoll = await deriveGameRoll(combinedSeed, `enemy_damage_${rollCounter}`, 6);
       rollCounter++;
 
       // Create minimal game state for combat resolution
@@ -153,6 +155,8 @@ export async function verifyBossFight(
         maxHp,
         currentScene: 'boss',
         choices: [],
+        rolls: [],
+        startedAt: 0,
         buffs,
         debuffs: [],
         spiritAbilityUsed,
@@ -246,12 +250,12 @@ function convertToStoredCharacter(char: MinimalCharacter): StoredCharacter {
   return {
     name: char.name,
     stats: {
-      str: { ...char.stats.str, dice: [] },
-      dex: { ...char.stats.dex, dice: [] },
-      con: { ...char.stats.con, dice: [] },
-      int: { ...char.stats.int, dice: [] },
-      wis: { ...char.stats.wis, dice: [] },
-      cha: { ...char.stats.cha, dice: [] },
+      str: { ...char.stats.str, dice: [0, 0, 0, 0] },
+      dex: { ...char.stats.dex, dice: [0, 0, 0, 0] },
+      con: { ...char.stats.con, dice: [0, 0, 0, 0] },
+      int: { ...char.stats.int, dice: [0, 0, 0, 0] },
+      wis: { ...char.stats.wis, dice: [0, 0, 0, 0] },
+      cha: { ...char.stats.cha, dice: [0, 0, 0, 0] },
     },
     traits: {
       element: char.traits.element,

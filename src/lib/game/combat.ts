@@ -235,19 +235,32 @@ export interface SpiritAbilityResult {
 
 /**
  * Use spirit animal ability
+ *
+ * WIS "Spirit Bond" enhances numeric abilities:
+ * - Wolf: +5 + wisMod attack buff
+ * - Dragon: 8 + wisMod direct damage
+ * - Tiger: +3 + wisMod damage buff
+ * - Whale: 6 + wisMod healing
+ * - Frog: 2 + floor(wisMod/2) poison per round
+ * - Boolean effects (Bear, Eagle, Spider, Owl, Octopus, Elephant, Deer): unchanged
  */
 export function useSpiritAbility(spirit: SpiritAnimal, state: GameState): SpiritAbilityResult {
+  const wisMod = Math.max(0, state.character.stats.wis.modifier);
+  const wisNote = wisMod > 0 ? ' Your spiritual bond amplifies the effect.' : '';
+
   switch (spirit) {
-    case 'Wolf':
+    case 'Wolf': {
+      const value = 5 + wisMod;
       return {
-        narrative: 'You channel the spirit of the Wolf. Pack tactics guide your next strike.',
+        narrative: `You channel the spirit of the Wolf. Pack tactics guide your next strike.${wisNote}`,
         buff: {
-          description: 'Wolf Pack Tactics: +5 to next attack',
+          description: `Wolf Pack Tactics: +${value} to next attack`,
           type: 'buff',
-          value: 5,
+          value,
           scenesRemaining: 1,
         },
       };
+    }
 
     case 'Bear':
       return {
@@ -261,11 +274,13 @@ export function useSpiritAbility(spirit: SpiritAnimal, state: GameState): Spirit
         autoSucceed: true,
       };
 
-    case 'Dragon':
+    case 'Dragon': {
+      const damage = 8 + wisMod;
       return {
-        narrative: 'Ancient dragon fire erupts from within you, engulfing your foe in primordial flame!',
-        damage: 8,
+        narrative: `Ancient dragon fire erupts from within you, engulfing your foe in primordial flame for ${damage} damage!${wisNote}`,
+        damage,
       };
+    }
 
     case 'Octopus':
       return {
@@ -284,16 +299,18 @@ export function useSpiritAbility(spirit: SpiritAnimal, state: GameState): Spirit
         autoSucceed: true, // For perception/puzzle checks
       };
 
-    case 'Tiger':
+    case 'Tiger': {
+      const value = 3 + wisMod;
       return {
-        narrative: 'You pounce with the ferocity of the Tiger. Your next strike will be devastating.',
+        narrative: `You pounce with the ferocity of the Tiger. Your next strike will be devastating.${wisNote}`,
         buff: {
-          description: 'Tiger Pounce: +3 damage on next attack',
+          description: `Tiger Pounce: +${value} damage on next attack`,
           type: 'buff',
-          value: 3,
+          value,
           scenesRemaining: 1,
         },
       };
+    }
 
     case 'Deer':
       return {
@@ -313,11 +330,13 @@ export function useSpiritAbility(spirit: SpiritAnimal, state: GameState): Spirit
         enemyAutoMiss: true,
       };
 
-    case 'Whale':
+    case 'Whale': {
+      const healing = 6 + wisMod;
       return {
-        narrative: 'The Whale spirit fills you with oceanic vitality. Your wounds begin to mend.',
-        healing: 6,
+        narrative: `The Whale spirit fills you with oceanic vitality. Your wounds mend for ${healing} HP.${wisNote}`,
+        healing,
       };
+    }
 
     case 'Elephant':
       return {
@@ -330,12 +349,14 @@ export function useSpiritAbility(spirit: SpiritAnimal, state: GameState): Spirit
         },
       };
 
-    case 'Frog':
+    case 'Frog': {
+      const poisonDamage = 2 + Math.floor(wisMod / 2);
       return {
-        narrative: 'Venom of the Frog spirit seeps into your enemy. They will suffer over time.',
-        poisonDamage: 2,
+        narrative: `Venom of the Frog spirit seeps into your enemy. They will suffer ${poisonDamage} damage per round.${wisNote}`,
+        poisonDamage,
         poisonDuration: 3,
       };
+    }
 
     default:
       return {
@@ -350,9 +371,15 @@ export function useSpiritAbility(spirit: SpiritAnimal, state: GameState): Spirit
 
 /**
  * Calculate player's attack modifier
+ * STR always applies. From round 2+, INT bonus kicks in (exploit weakness — pattern recognition).
  */
-export function getPlayerAttackMod(character: StoredCharacter, buffs: ActiveEffect[]): number {
+export function getPlayerAttackMod(character: StoredCharacter, buffs: ActiveEffect[], combatRound: number = 1): number {
   let mod = character.stats.str.modifier; // Melee uses STR
+
+  // INT: Exploit Weakness — from round 2+ the character reads enemy patterns
+  if (combatRound >= 2) {
+    mod += Math.max(0, character.stats.int.modifier);
+  }
 
   // Add buff bonuses
   for (const buff of buffs) {
@@ -411,9 +438,15 @@ export function calculateEnemyDamage(
 
 /**
  * Get player's defense value
+ * DEX always applies. From round 2+, WIS bonus kicks in (insightful defense — reading attack patterns).
  */
-export function getPlayerDefense(character: StoredCharacter, debuffs: ActiveEffect[]): number {
+export function getPlayerDefense(character: StoredCharacter, debuffs: ActiveEffect[], combatRound: number = 1): number {
   let defense = BASE_DEFENSE + character.stats.dex.modifier;
+
+  // WIS: Insightful Defense — from round 2+ the character reads enemy attack patterns
+  if (combatRound >= 2) {
+    defense += Math.max(0, character.stats.wis.modifier);
+  }
 
   // Element bonus
   defense += getElementBonus(character.traits.element, 'defense');
@@ -457,21 +490,30 @@ export function resolveCombatRound(
   let enemyDamage = 0;
   let narrative = '';
 
-  const playerDefense = getPlayerDefense(character, debuffs);
+  const playerDefense = getPlayerDefense(character, debuffs, round);
 
   // --- Player Turn ---
   switch (playerAction) {
     case 'attack': {
-      const attackMod = getPlayerAttackMod(character, buffs);
+      const strMod = character.stats.str.modifier;
+      const intMod = round >= 2 ? Math.max(0, character.stats.int.modifier) : 0;
+      const attackMod = getPlayerAttackMod(character, buffs, round);
       const attackTotal = playerAttackRoll + attackMod;
       const hit = attackTotal >= enemy.defense;
 
+      // Build attack breakdown string
+      const modParts = [`${strMod}`];
+      if (intMod > 0) modParts.push(`${intMod}INT`);
+      const buffMod = attackMod - strMod - intMod;
+      if (buffMod > 0) modParts.push(`${buffMod}buff`);
+      const modBreakdown = modParts.join('+');
+
       if (hit) {
         playerDamage = calculatePlayerDamage(character, playerDamageRoll, buffs, enemy.element);
-        narrative += `You strike the ${enemy.name}! (${playerAttackRoll}+${attackMod}=${attackTotal} vs ${enemy.defense}) `;
+        narrative += `You strike the ${enemy.name}! (${playerAttackRoll}+${modBreakdown}=${attackTotal} vs ${enemy.defense}) `;
         narrative += `You deal ${playerDamage} damage. `;
       } else {
-        narrative += `Your attack misses the ${enemy.name}. (${playerAttackRoll}+${attackMod}=${attackTotal} vs ${enemy.defense}) `;
+        narrative += `Your attack misses the ${enemy.name}. (${playerAttackRoll}+${modBreakdown}=${attackTotal} vs ${enemy.defense}) `;
       }
       break;
     }

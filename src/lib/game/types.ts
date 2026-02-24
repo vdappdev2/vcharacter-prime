@@ -241,7 +241,7 @@ export interface GameState {
   debuffs: ActiveEffect[];
 
   /** Path chosen in Scene 2 */
-  pathChosen?: 'might' | 'cunning' | 'spirit' | 'shadows';
+  pathChosen?: 'might' | 'cunning' | 'spirit' | 'shadows' | 'endurance' | 'charm';
 
   /** Choice made in Scene 5 */
   bargainChoice?: 'power' | 'wisdom';

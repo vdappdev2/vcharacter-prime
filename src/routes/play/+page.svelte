@@ -916,8 +916,8 @@
 							</div>
 						</div>
 						<div class="text-xs text-secondary">
-							ATK: {formatModifier(gameState.character.stats.str.modifier)} |
-							DEF: {10 + gameState.character.stats.dex.modifier}
+							ATK: {formatModifier(gameState.character.stats.str.modifier)}{#if gameState.combat.round >= 2 && gameState.character.stats.int.modifier > 0}+{gameState.character.stats.int.modifier}INT{/if} |
+							DEF: {10 + gameState.character.stats.dex.modifier}{#if gameState.combat.round >= 2 && gameState.character.stats.wis.modifier > 0}+{gameState.character.stats.wis.modifier}WIS{/if}
 						</div>
 					</div>
 

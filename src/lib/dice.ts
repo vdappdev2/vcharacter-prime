@@ -58,11 +58,12 @@ export async function deriveRoll(
 /**
  * Calculate stat modifier from total
  *
- * Formula: floor((stat - 14) / 2)
- * This gives +0 at 14, which is the baseline.
+ * Formula: floor((stat - 13) / 2)
+ * This gives +0 at 13-14 (the mean), +1 at 15-16, etc.
+ * Slightly-above-average characters feel positive rather than flat.
  */
 export function calculateModifier(total: number): number {
-  return Math.floor((total - 14) / 2);
+  return Math.floor((total - 13) / 2);
 }
 
 /**
