@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import QRCode from 'qrcode';
 	import type { StoredCharacter, CharacterStats } from '$lib/types';
 	import type { GameState, GameChoice, Enemy, CombatRoundResult, SkillCheck } from '$lib/game/types';
@@ -88,6 +88,19 @@
 	let storingAchievement: boolean = false;
 	let achievementPollTimeout: ReturnType<typeof setTimeout> | null = null;
 
+	function handleVisibilityChange() {
+		if (document.visibilityState !== 'visible') return;
+		if (blockPollTimeout && waitingForBlock) startBlockPolling(true);
+		if (achievementPollTimeout && !achievementStored) startAchievementPolling(true);
+	}
+
+	onMount(() => {
+		document.addEventListener('visibilitychange', handleVisibilityChange);
+		return () => {
+			document.removeEventListener('visibilitychange', handleVisibilityChange);
+		};
+	});
+
 	onDestroy(() => {
 		if (blockPollTimeout) clearTimeout(blockPollTimeout);
 		if (achievementPollTimeout) clearTimeout(achievementPollTimeout);
@@ -117,7 +130,7 @@
 		startBlockPolling();
 	}
 
-	function startBlockPolling() {
+	function startBlockPolling(immediate = false) {
 		if (blockPollTimeout) {
 			clearTimeout(blockPollTimeout);
 		}
@@ -140,7 +153,7 @@
 				console.error('Block polling error:', err);
 				blockPollTimeout = setTimeout(poll, 3000);
 			}
-		}, 3000);
+		}, immediate ? 0 : 3000);
 	}
 
 	async function deriveRoll(label: string, dieSize: number): Promise<number> {
@@ -586,7 +599,7 @@
 		}
 	}
 
-	function startAchievementPolling() {
+	function startAchievementPolling(immediate = false) {
 		if (achievementPollTimeout) clearTimeout(achievementPollTimeout);
 
 		achievementPollTimeout = setTimeout(async function poll() {
@@ -605,7 +618,7 @@
 				console.error('Achievement polling error:', err);
 				achievementPollTimeout = setTimeout(poll, 3000);
 			}
-		}, 3000);
+		}, immediate ? 0 : 3000);
 	}
 
 	function copyToClipboard(text: string) {

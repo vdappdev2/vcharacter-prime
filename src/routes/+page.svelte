@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import QRCode from 'qrcode';
 	import { generateClientSeed, sha256String } from '$lib/crypto';
 	import type { StoredCharacter, CharacterStats } from '$lib/types';
@@ -52,6 +52,20 @@
 
 	// Polling
 	let pollTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	function handleVisibilityChange() {
+		if (document.visibilityState !== 'visible' || !pollTimeout) return;
+		if (state === 'waiting_signature') startCommitmentPolling(true);
+		else if (state === 'waiting_block') startBlockPolling(true);
+		else if (state === 'storing') startStoragePolling(true);
+	}
+
+	onMount(() => {
+		document.addEventListener('visibilitychange', handleVisibilityChange);
+		return () => {
+			document.removeEventListener('visibilitychange', handleVisibilityChange);
+		};
+	});
 
 	onDestroy(() => {
 		if (pollTimeout) clearTimeout(pollTimeout);
@@ -108,7 +122,7 @@
 		}
 	}
 
-	function startCommitmentPolling() {
+	function startCommitmentPolling(immediate = false) {
 		if (pollTimeout) clearTimeout(pollTimeout);
 
 		pollTimeout = setTimeout(async function poll() {
@@ -130,7 +144,7 @@
 				console.error('Polling error:', err);
 				pollTimeout = setTimeout(poll, 3000);
 			}
-		}, 3000);
+		}, immediate ? 0 : 3000);
 	}
 
 	async function verifyAndDeriveCharacter() {
@@ -196,7 +210,7 @@
 		}
 	}
 
-	function startBlockPolling() {
+	function startBlockPolling(immediate = false) {
 		if (pollTimeout) clearTimeout(pollTimeout);
 
 		pollTimeout = setTimeout(async function poll() {
@@ -211,7 +225,7 @@
 					pollTimeout = setTimeout(poll, 5000);
 				}
 			}
-		}, 5000);
+		}, immediate ? 0 : 5000);
 	}
 
 	// ========== Storage Flow ==========
@@ -259,7 +273,7 @@
 		}
 	}
 
-	function startStoragePolling() {
+	function startStoragePolling(immediate = false) {
 		if (pollTimeout) clearTimeout(pollTimeout);
 
 		pollTimeout = setTimeout(async function poll() {
@@ -278,7 +292,7 @@
 				console.error('Storage polling error:', err);
 				pollTimeout = setTimeout(poll, 3000);
 			}
-		}, 3000);
+		}, immediate ? 0 : 3000);
 	}
 
 	// ========== Helpers ==========
