@@ -256,7 +256,6 @@
 			userIdentity: apiChar.identityAddress || '',
 			userFriendlyName: identity,
 			commitment: {
-				challenge: '',
 				response: '',
 				signedBlockHeight: apiChar.verification.commitmentBlockHeight,
 				clientSeedHash: apiChar.verification.clientSeedHash,

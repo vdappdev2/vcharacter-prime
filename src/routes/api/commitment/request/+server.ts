@@ -1,11 +1,11 @@
 /**
  * POST /api/commitment/request
  *
- * Creates a signed LoginConsentRequest with commitment hash embedded in callback URL.
- * Returns deeplink URL and session info for tracking.
+ * Creates a signed GenericRequest (AuthenticationRequest) with the commitment
+ * hash embedded in the response URI. Returns deeplink URL and session info.
  *
- * STATELESS: The callback URL points to a client page (/callback), not an API.
- * The client will later submit the signed response for stateless verification.
+ * STATELESS: the commitment hash and challengeId are signed into the response
+ * URI. Verification reconstructs them from the wallet's signed GenericResponse.
  */
 
 import { json } from '@sveltejs/kit';
@@ -13,14 +13,14 @@ import type { RequestHandler } from './$types';
 import {
   createCommitmentRequest,
   isCommitmentConfigured,
-} from '$lib/server/loginConsent';
+} from '$lib/server/genericAuth';
 
 export const POST: RequestHandler = async ({ request, url }) => {
   // Check if commitment flow is configured
   if (!isCommitmentConfigured()) {
     return json(
       {
-        error: 'Commitment service not configured. Set SERVICE_IDENTITY_WIF environment variable.',
+        error: 'Commitment service not configured. Set SERVICE_IDENTITY_WIF and SERVICE_IDENTITY_IADDRESS.',
       },
       { status: 503 }
     );
@@ -45,9 +45,9 @@ export const POST: RequestHandler = async ({ request, url }) => {
       );
     }
 
-    // Build callback URL - points to CLIENT page, not API
-    // The commitment hash is embedded in the URL for stateless verification
-    const callbackUrl = `${url.origin}/callback`;
+    // Wallet TYPE_REDIRECT destination. createCommitmentRequest will append
+    // `commitment` and `challengeId` as signed query params.
+    const callbackUrl = `${url.origin}/api/commitment/callback`;
 
     // Create the commitment request
     const result = await createCommitmentRequest(clientSeedHash, callbackUrl);

@@ -48,8 +48,8 @@ export const POST: RequestHandler = async ({ request, url }) => {
       return json({ error: 'character roll block data is required' }, { status: 400 });
     }
 
-    // Build callback URL - points to CLIENT page for stateless flow
-    const callbackUrl = `${url.origin}/callback/storage?type=character`;
+    // Wallet TYPE_REDIRECT destination. identityUpdate.ts will append requestId.
+    const callbackUrl = `${url.origin}/api/storage/callback?type=character`;
 
     // Create the storage request
     const result = await createCharacterStorageRequest(character, callbackUrl);

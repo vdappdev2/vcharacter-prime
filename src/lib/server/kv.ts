@@ -1,12 +1,20 @@
 /**
  * Redis KV Store for Wallet Responses
  *
- * Simple key-value storage for wallet callback responses.
- * Uses Upstash Redis (works with Vercel, Cloudflare, etc.)
+ * Upstash Redis (works on Vercel, Cloudflare, etc.) — the only persistence used
+ * to bridge cross-device wallet flow (desktop QR → phone wallet → desktop poll).
  *
- * Keys:
- *   commitment:{challengeId} -> wallet signed response
- *   storage:{requestId} -> wallet storage response
+ * Key layout:
+ *   prime:commitment:v2:{challengeId} -> wallet-signed GenericResponse buffer (base64url)
+ *   prime:storage:v2:{requestId}      -> identityupdate txid (hex)
+ *
+ * Prefix rationale:
+ *   - "prime:" — app namespace. The Upstash instance is shared with vcharacter-sales
+ *     (and eventually vcharacter-ninja); without the prefix an orphan key can't be
+ *     attributed during triage.
+ *   - ":v2:" — flow version. Bumped when migrating from LoginConsent → GenericRequest
+ *     so any in-flight v1 entries can't be parsed by the new code. Old entries expire
+ *     naturally within RESPONSE_TTL.
  */
 
 import { Redis } from '@upstash/redis';
@@ -39,60 +47,74 @@ export function isKvConfigured(): boolean {
 	return !!(env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN);
 }
 
+const commitmentKey = (id: string) => `prime:commitment:v2:${id}`;
+const storageKey = (id: string) => `prime:storage:v2:${id}`;
+
 /**
- * Store a commitment response (from wallet callback)
+ * Store a commitment response (base64url GenericResponse buffer from wallet callback).
+ *
+ * First-writer-wins via NX. If a response was already stored for this seedHash,
+ * the second write is rejected. This blocks the overwrite variant of the
+ * race-to-overwrite attack where a second callback could displace the legit
+ * envelope after the first was already written. (See the threat-model memory.)
+ *
+ * @returns true if stored, false if an entry already existed.
  */
-export async function storeCommitmentResponse(challengeId: string, responseData: string): Promise<void> {
+export async function storeCommitmentResponse(challengeId: string, responseData: string): Promise<boolean> {
 	const r = getRedis();
-	await r.set(`commitment:${challengeId}`, responseData, { ex: RESPONSE_TTL });
+	const result = await r.set(commitmentKey(challengeId), responseData, { ex: RESPONSE_TTL, nx: true });
+	return result === 'OK';
 }
 
 /**
- * Get and delete a commitment response (one-time retrieval)
- */
-export async function consumeCommitmentResponse(challengeId: string): Promise<string | null> {
-	const r = getRedis();
-	const key = `commitment:${challengeId}`;
-	const data = await r.get<string>(key);
-	if (data) {
-		await r.del(key);
-	}
-	return data;
-}
-
-/**
- * Check if a commitment response exists (without consuming)
+ * Check if a commitment response has arrived (non-consuming).
  */
 export async function hasCommitmentResponse(challengeId: string): Promise<boolean> {
 	const r = getRedis();
-	return (await r.exists(`commitment:${challengeId}`)) === 1;
+	return (await r.exists(commitmentKey(challengeId))) === 1;
 }
 
 /**
- * Store a storage response (from wallet callback)
+ * Read a commitment response without deleting it. Used by verify-stateless so
+ * that `waiting_block` retry polls can re-read the same envelope.
  */
-export async function storeStorageResponse(requestId: string, responseData: string): Promise<void> {
+export async function peekCommitmentResponse(challengeId: string): Promise<string | null> {
 	const r = getRedis();
-	await r.set(`storage:${requestId}`, responseData, { ex: RESPONSE_TTL });
+	return await r.get<string>(commitmentKey(challengeId));
 }
 
 /**
- * Get and delete a storage response (one-time retrieval)
+ * Delete the commitment response after successful character derivation.
  */
-export async function consumeStorageResponse(requestId: string): Promise<string | null> {
+export async function consumeCommitmentResponse(challengeId: string): Promise<void> {
 	const r = getRedis();
-	const key = `storage:${requestId}`;
+	await r.del(commitmentKey(challengeId));
+}
+
+/**
+ * Store a completed storage txid (hex, display order) for the requesting requestId.
+ * The GenericResponse is parsed in the callback endpoint, not here — we only persist
+ * the extracted txid so /api/storage/status stays trivial.
+ *
+ * NX semantics — same rationale as storeCommitmentResponse.
+ *
+ * @returns true if stored, false if an entry already existed.
+ */
+export async function storeStorageTxid(requestId: string, txid: string): Promise<boolean> {
+	const r = getRedis();
+	const result = await r.set(storageKey(requestId), txid, { ex: RESPONSE_TTL, nx: true });
+	return result === 'OK';
+}
+
+/**
+ * Get and delete a storage txid (one-time retrieval).
+ */
+export async function consumeStorageTxid(requestId: string): Promise<string | null> {
+	const r = getRedis();
+	const key = storageKey(requestId);
 	const data = await r.get<string>(key);
 	if (data) {
 		await r.del(key);
 	}
 	return data;
-}
-
-/**
- * Check if a storage response exists (without consuming)
- */
-export async function hasStorageResponse(requestId: string): Promise<boolean> {
-	const r = getRedis();
-	return (await r.exists(`storage:${requestId}`)) === 1;
 }

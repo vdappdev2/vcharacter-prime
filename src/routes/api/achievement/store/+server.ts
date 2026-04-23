@@ -55,9 +55,8 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			return json({ error: 'achievement.bossSceneBlockHeight is required' }, { status: 400 });
 		}
 
-		// Build callback URL - points to CLIENT page for stateless flow
-		// Include returnTo=/play so user is redirected back to the game page
-		const callbackUrl = `${url.origin}/callback/storage?type=achievement&returnTo=/play`;
+		// Wallet TYPE_REDIRECT destination. identityUpdate.ts will append requestId.
+		const callbackUrl = `${url.origin}/api/storage/callback?type=achievement`;
 
 		// Create the storage request
 		const result = await createAchievementStorageRequest(achievement, identity, callbackUrl);

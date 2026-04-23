@@ -271,7 +271,6 @@ function convertToStoredCharacter(char: MinimalCharacter): StoredCharacter {
     userIdentity: '',
     userFriendlyName: '',
     commitment: {
-      challenge: '',
       response: '',
       signedBlockHeight: 0,
       clientSeedHash: '',

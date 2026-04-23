@@ -175,24 +175,27 @@ export interface VerificationResult {
 }
 
 // ============================================================================
-// Commitment Types (Phase 2 - Login Consent Attestation)
+// Commitment Types (GenericRequest + AuthenticationRequestDetails flow)
 // ============================================================================
 
 /**
- * Commitment proof from Login Consent flow
- * Proves the client_seed was committed before the block hash was known
+ * Commitment proof from the GenericRequest authentication flow.
+ * Proves the client_seed was committed before the roll block hash was known.
  *
  * This is the cryptographic proof that enables trustless verification:
- * - The response contains a signature that can be verified against the user's VerusID
- * - The signature includes the block height, proving when the commitment was made
- * - The clientSeedHash in the challenge proves what was committed
+ * - The response carries a pbaas identity signature with the signing block
+ *   height embedded in it (extracted via getSignatureInfo)
+ * - The seed hash is baked into the signed ResponseURI of the original
+ *   GenericRequest, so it cannot be mutated after signing
+ *
+ * Not stored on-chain — only the distilled {clientSeed, clientSeedHash,
+ * rollBlockHeight, rollBlockHash, commitmentBlockHeight} is written to the
+ * character's contentmultimap. This in-memory object is the raw material.
  */
 export interface CommitmentProof {
-  /** The original login consent challenge (JSON serialized) */
-  challenge: string;
-  /** The signed LoginConsentResponse (base64 encoded buffer for direct verification) */
+  /** The signed GenericResponse buffer, base64url-encoded */
   response: string;
-  /** Block height when the user signed (extracted from signature) */
+  /** Block height when the user signed (extracted from the pbaas identity signature) */
   signedBlockHeight: number;
   /** Hash of client_seed that was committed */
   clientSeedHash: string;

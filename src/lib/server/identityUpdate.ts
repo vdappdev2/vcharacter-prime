@@ -21,12 +21,13 @@ import { randomBytes } from 'crypto';
 // @ts-ignore - no types available
 import bs58check from 'bs58check';
 import { env } from '$env/dynamic/private';
-import { VERUS_RPC, CHAIN_IDS, SERVICE_IDENTITY } from '../config';
+import { VERUS_RPC, CHAIN_IDS } from '../config';
 import type { StoredCharacter } from '../types';
 import { buildCharacterContentMap, buildAchievementContentMap, type AchievementProofData } from '../vdxf';
 import { getIdentity } from './verus';
 
 const SERVICE_IDENTITY_WIF = env.SERVICE_IDENTITY_WIF || '';
+const SERVICE_IDENTITY_IADDRESS = env.SERVICE_IDENTITY_IADDRESS || '';
 
 function getVerusIdInterface(): VerusIdInterface {
 	const chainId = CHAIN_IDS[VERUS_RPC.chainId === 'vrsctest' ? 'testnet' : 'mainnet'];
@@ -42,10 +43,14 @@ function generateRandomIAddress(): string {
 }
 
 /**
- * Check if identity update is configured
+ * Check if identity update env vars are configured.
  */
 export function isStorageConfigured(): boolean {
-	return !!SERVICE_IDENTITY_WIF && SERVICE_IDENTITY_WIF !== 'YOUR_WIF_HERE';
+	return (
+		!!SERVICE_IDENTITY_WIF &&
+		SERVICE_IDENTITY_WIF !== 'YOUR_WIF_HERE' &&
+		!!SERVICE_IDENTITY_IADDRESS
+	);
 }
 
 /**
@@ -60,7 +65,7 @@ export async function createCharacterStorageRequest(
 	deeplinkUri: string;
 }> {
 	if (!isStorageConfigured()) {
-		throw new Error('SERVICE_IDENTITY_WIF not configured');
+		throw new Error('SERVICE_IDENTITY_WIF and SERVICE_IDENTITY_IADDRESS must be set');
 	}
 
 	const chainId = CHAIN_IDS[VERUS_RPC.chainId === 'vrsctest' ? 'testnet' : 'mainnet'];
@@ -106,10 +111,11 @@ export async function createCharacterStorageRequest(
 		responseURIs: responseUris,
 	});
 
-	// Initialize signature metadata (library will fetch identity/height as needed)
+	// Plan §9.1: version + systemID both required or wallet rejects the request.
 	request.signature = new VerifiableSignatureData({
+		version: VerifiableSignatureData.DEFAULT_VERSION,
 		systemID: CompactIAddressObject.fromAddress(chainId),
-		identityID: CompactIAddressObject.fromAddress(SERVICE_IDENTITY.iAddress),
+		identityID: CompactIAddressObject.fromAddress(SERVICE_IDENTITY_IADDRESS),
 	});
 
 	if (isTestnet) {
@@ -140,7 +146,7 @@ export async function createAchievementStorageRequest(
 	deeplinkUri: string;
 }> {
 	if (!isStorageConfigured()) {
-		throw new Error('SERVICE_IDENTITY_WIF not configured');
+		throw new Error('SERVICE_IDENTITY_WIF and SERVICE_IDENTITY_IADDRESS must be set');
 	}
 
 	const chainId = CHAIN_IDS[VERUS_RPC.chainId === 'vrsctest' ? 'testnet' : 'mainnet'];
@@ -184,10 +190,11 @@ export async function createAchievementStorageRequest(
 		responseURIs: responseUris,
 	});
 
-	// Initialize signature metadata (library will fetch identity/height as needed)
+	// Plan §9.1: version + systemID both required or wallet rejects the request.
 	request.signature = new VerifiableSignatureData({
+		version: VerifiableSignatureData.DEFAULT_VERSION,
 		systemID: CompactIAddressObject.fromAddress(chainId),
-		identityID: CompactIAddressObject.fromAddress(SERVICE_IDENTITY.iAddress),
+		identityID: CompactIAddressObject.fromAddress(SERVICE_IDENTITY_IADDRESS),
 	});
 
 	if (isTestnet) {

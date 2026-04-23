@@ -28,8 +28,7 @@ export const GET: RequestHandler = async ({ url }) => {
   }
 
   try {
-    // Get the identity content filtered by our VDXF key
-    // This is more reliable than getidentity as it works even if the identity has been updated since
+    // Daemon RPC filter uses the vdxfid (i-address form).
     const primeInauguralKey = VDXF_KEYS.primeInaugural;
     const identityContent = await getIdentityContent(
       identity,
@@ -47,10 +46,12 @@ export const GET: RequestHandler = async ({ url }) => {
       );
     }
 
-    // Check if the identity has character content
+    // Plan §9.3: accept both FQN and i-address outer keys.
     const contentMultiMap = identityContent.identity?.contentmultimap;
+    const hasEntries = contentMultiMap &&
+      (contentMultiMap[VDXF_KEYS.primeInauguralFqn] || contentMultiMap[VDXF_KEYS.primeInaugural]);
 
-    if (!contentMultiMap || !contentMultiMap[primeInauguralKey]) {
+    if (!hasEntries) {
       return json({
         valid: false,
         error: 'No character proof found on this identity',

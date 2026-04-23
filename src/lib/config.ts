@@ -63,17 +63,33 @@ export const CHAIN_IDS = {
  */
 
 // Testnet VDXF Keys (testidx.vrsctest:: namespace)
+//
+// Outer keys used in contentmultimap come in two forms:
+//   - *Fqn form: passed to the WALLET when building updateidentity requests.
+//     Per plan §9.2, the wallet rejects raw i-address outer keys for custom
+//     (non-well-known) keys — it only validates them when the outer key is an
+//     FQN whose namespace resolves to the signing identity.
+//   - i-address form: used when READING back from the daemon. The daemon may
+//     or may not normalize FQN → i-address on storage (undocumented). Readers
+//     accept both forms per plan §9.3.
+//
+// The namespace of each FQN (e.g. "testidx.vrsctest") must resolve to the
+// i-address configured in SERVICE_IDENTITY_IADDRESS (.env).
 const TESTNET_VDXF = {
-  // Commitment challenge namespace (used in LoginConsentRequest)
+  // Commitment challenge namespace (used in GenericRequest authentication flow)
   commitment: 'iQQPkGHFazZQq3WGseVmf1Nhwj5m2gKQGU', // testidx.vrsctest::prime.inaugural.commitment
 
   // Outer key for on-chain storage (contentmultimap)
   primeInaugural: 'iFyh3hu51uwFbNSmDxSPZCFzCVKf8rvEtr', // testidx.vrsctest::prime.inaugural
+  primeInauguralFqn: 'testidx.vrsctest::prime.inaugural',
 
   // Achievement outer key for game completions
   primordialTrial: 'iSKdCUtnwdRiMm1fyCdLqU7CynXdNX98HD', // testidx.vrsctest::prime.primordialtrial
+  primordialTrialFqn: 'testidx.vrsctest::prime.primordialtrial',
 
-  // Labels (inside DataDescriptor, within the outer key)
+  // Labels (inside DataDescriptor, within the outer key).
+  // Plan §9.2: "Labels inside DataDescriptor entries aren't subject to this
+  // check — they can stay as raw i-addresses."
   labels: {
     name: 'iEKKM3YbgNvLoXVP4Uya7bsx54d2oQc1iQ',   // .name
     stats: 'iNzD4oawft7rG6jfAF6CtzinVAeGbJyt3w',   // .stats
@@ -89,9 +105,11 @@ const MAINNET_VDXF = {
 
   // Outer key for on-chain storage (contentmultimap)
   primeInaugural: 'iJxgKswyBJofVV5kFSdx4EudSFrtchdVWA', // vcharacter.vrsc::prime.inaugural
+  primeInauguralFqn: 'vcharacter.vrsc::prime.inaugural',
 
   // Achievement outer key for game completions
   primordialTrial: 'iD2eHL2tF2JDeZq5Ro7NR22tU8Z1UnB3cg', // vcharacter.vrsc::prime.primordialtrial
+  primordialTrialFqn: 'vcharacter.vrsc::prime.primordialtrial',
 
   // Labels (inside DataDescriptor, within the outer key)
   labels: {
@@ -113,17 +131,19 @@ export const VDXF_KEYS = {
 /**
  * Service Identity Configuration
  *
- * The service identity is used to sign commitment challenges.
- * Testnet: testidx@ (i6V4or9qptD5JzxkqgUKz45tvtBNMb72N3)
- * Mainnet: vcharacter@ (iJPATzocvNM3k9UaCDYjVFarzrG3ujzCup)
+ * The service identity signs commitment and storage requests. Its name, i-address,
+ * and WIF private key are all driven by environment variables — set them in .env
+ * per the current network. See .env.example for the testnet/mainnet values and
+ * the CLI commands to derive them.
  *
- * The private key (WIF) should be set in environment variable SERVICE_IDENTITY_WIF
- * Get it with: ./verus -chain=vrsctest dumpprivkey <primary_address>
+ * Env vars (all read at request time via $env/dynamic/private):
+ *   SERVICE_IDENTITY_NAME     — e.g. "testidx@" or "vcharacter@"
+ *   SERVICE_IDENTITY_IADDRESS — e.g. "i6V4or9qptD5JzxkqgUKz45tvtBNMb72N3"
+ *   SERVICE_IDENTITY_WIF      — WIF private key of the identity's primary address
+ *
+ * Aligned with vtimestamp's env convention so the three-app fleet (prime, sales,
+ * ninja) shares one deployment shape.
  */
-export const SERVICE_IDENTITY = {
-  name: CURRENT_NETWORK === 'testnet' ? 'testidx@' : 'vcharacter@',
-  iAddress: CURRENT_NETWORK === 'testnet' ? 'i6V4or9qptD5JzxkqgUKz45tvtBNMb72N3' : 'iJPATzocvNM3k9UaCDYjVFarzrG3ujzCup',
-};
 
 /**
  * Commitment Configuration

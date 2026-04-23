@@ -91,7 +91,8 @@ function buildDataDescriptor(
  *   - clientSeed: The revealed seed (hash must match commitment)
  *   - rollBlockHeight: Block used for randomness
  *   - rollBlockHash: Hash of that block (verifiable on-chain)
- *   - commitmentResponse: Full signed LoginConsentResponse (cryptographic proof)
+ *   - commitmentBlockHeight: Block at which the wallet signed the commitment
+ *     (extracted from the signed GenericResponse envelope signature)
  *
  * @param character - The complete stored character with all verification data
  * @returns ContentMultiMap ready for updateidentity
@@ -133,9 +134,10 @@ export function buildCharacterContentMap(character: StoredCharacter): ContentMul
   };
   entries.push(buildDataDescriptor(VDXF_KEYS.labels.proof, proofData, 'application/json'));
 
-  // Return ContentMultiMap with single outer key containing all entries
+  // Plan §9.2: outer key MUST be the FQN string for custom keys. Wallet rejects
+  // raw i-address outer keys with "Cannot update with unknown key".
   return {
-    [VDXF_KEYS.primeInaugural]: entries,
+    [VDXF_KEYS.primeInauguralFqn]: entries,
   };
 }
 
@@ -182,8 +184,9 @@ export function buildAchievementContentMap(achievement: AchievementProofData): C
     buildDataDescriptor('.achievement', achievement, 'application/json')
   );
 
+  // Plan §9.2: outer key MUST be the FQN string for custom keys.
   return {
-    [VDXF_KEYS.primordialTrial]: entries,
+    [VDXF_KEYS.primordialTrialFqn]: entries,
   };
 }
 
@@ -268,8 +271,11 @@ function extractStringValue(descriptor: DataDescriptor): string | undefined {
  * @returns Parsed character data for verification
  */
 export function parseCharacterContentMap(contentMap: Record<string, unknown>): ParsedCharacterData | null {
-  // Get entries from the outer key
-  const entries = contentMap[VDXF_KEYS.primeInaugural] as DataDescriptorWrapper[] | undefined;
+  // Plan §9.3: accept both FQN and i-address forms — daemon normalization on
+  // storage is undocumented and may change.
+  const entries = (contentMap[VDXF_KEYS.primeInauguralFqn] ?? contentMap[VDXF_KEYS.primeInaugural]) as
+    | DataDescriptorWrapper[]
+    | undefined;
   if (!entries || !Array.isArray(entries) || entries.length === 0) {
     return null;
   }
@@ -329,8 +335,10 @@ export function parseCharacterContentMap(contentMap: Record<string, unknown>): P
  * @returns Array of parsed character data
  */
 export function parseAllCharacters(contentMap: Record<string, unknown>): ParsedCharacterData[] {
-  // Get entries from the outer key
-  const entries = contentMap[VDXF_KEYS.primeInaugural] as DataDescriptorWrapper[] | undefined;
+  // Plan §9.3: accept both FQN and i-address forms.
+  const entries = (contentMap[VDXF_KEYS.primeInauguralFqn] ?? contentMap[VDXF_KEYS.primeInaugural]) as
+    | DataDescriptorWrapper[]
+    | undefined;
   if (!entries || !Array.isArray(entries) || entries.length === 0) {
     return [];
   }
@@ -453,8 +461,10 @@ export interface ParsedAchievementData {
  * @returns Array of parsed achievement data
  */
 export function parseAllAchievements(contentMap: Record<string, unknown>): ParsedAchievementData[] {
-  // Get entries from the primordialTrial key
-  const entries = contentMap[VDXF_KEYS.primordialTrial] as DataDescriptorWrapper[] | undefined;
+  // Plan §9.3: accept both FQN and i-address forms.
+  const entries = (contentMap[VDXF_KEYS.primordialTrialFqn] ?? contentMap[VDXF_KEYS.primordialTrial]) as
+    | DataDescriptorWrapper[]
+    | undefined;
   if (!entries || !Array.isArray(entries) || entries.length === 0) {
     return [];
   }

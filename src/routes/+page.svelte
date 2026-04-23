@@ -29,9 +29,6 @@
 	let deeplinkUri = '';
 	let qrDataUrl = '';
 
-	// Wallet response (received from polling)
-	let walletResponse = '';
-
 	// Verified commitment data
 	let userIdentity = '';
 	let userFriendlyName = '';
@@ -132,7 +129,6 @@
 
 				if (data.status === 'received') {
 					pollTimeout = null;
-					walletResponse = data.responseData;
 					await verifyAndDeriveCharacter();
 					if (state === 'waiting_block') {
 						startBlockPolling();
@@ -159,7 +155,6 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					responseData: walletResponse,
 					clientSeed,
 					characterName: characterName || 'Unnamed Hero',
 				}),
@@ -311,7 +306,6 @@
 		clientSeedHash = '';
 		deeplinkUri = '';
 		qrDataUrl = '';
-		walletResponse = '';
 		userIdentity = '';
 		userFriendlyName = '';
 		commitmentBlockHeight = 0;

@@ -1,13 +1,15 @@
 /**
  * GET /api/commitment/status
  *
- * Check if a wallet response is available for a commitment.
- * Returns the response data if available.
+ * Non-consuming existence check for a pending commitment envelope.
+ * Returns `received` once the wallet callback has stored an envelope keyed by
+ * this seedHash, `pending` otherwise. The client then calls verify-stateless,
+ * which is the endpoint that actually reads and consumes the envelope.
  */
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { consumeCommitmentResponse, isKvConfigured } from '$lib/server/kv';
+import { hasCommitmentResponse, isKvConfigured } from '$lib/server/kv';
 
 export const GET: RequestHandler = async ({ url }) => {
 	if (!isKvConfigured()) {
@@ -20,24 +22,13 @@ export const GET: RequestHandler = async ({ url }) => {
 	}
 
 	try {
-		// The commitment hash is used as the key
-		const responseData = await consumeCommitmentResponse(seedHash);
-
-		if (responseData) {
-			return json({
-				status: 'received',
-				responseData,
-			});
-		}
-
-		return json({
-			status: 'pending',
-		});
+		const received = await hasCommitmentResponse(seedHash);
+		return json({ status: received ? 'received' : 'pending' });
 	} catch (error) {
 		console.error('Error checking commitment status:', error);
 		return json(
 			{ error: error instanceof Error ? error.message : 'Status check failed' },
-			{ status: 500 }
+			{ status: 500 },
 		);
 	}
 };

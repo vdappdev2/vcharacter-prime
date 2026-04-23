@@ -19,7 +19,7 @@ export const GET: RequestHandler = async ({ url }) => {
   }
 
   try {
-    // Get the identity content filtered by primordialTrial VDXF key
+    // Daemon RPC filter uses the vdxfid (i-address form).
     const achievementKey = VDXF_KEYS.primordialTrial;
     const identityContent = await getIdentityContent(
       identity,
@@ -37,10 +37,12 @@ export const GET: RequestHandler = async ({ url }) => {
       );
     }
 
-    // Check if the identity has achievement content
+    // Plan §9.3: accept both FQN and i-address outer keys.
     const contentMultiMap = identityContent.identity?.contentmultimap;
+    const hasEntries = contentMultiMap &&
+      (contentMultiMap[VDXF_KEYS.primordialTrialFqn] || contentMultiMap[VDXF_KEYS.primordialTrial]);
 
-    if (!contentMultiMap || !contentMultiMap[achievementKey]) {
+    if (!hasEntries) {
       return json({
         identity: identity,
         identityAddress: identityContent.identity?.identityaddress,

@@ -19,7 +19,8 @@ export const GET: RequestHandler = async ({ url }) => {
   }
 
   try {
-    // Get the identity content filtered by our VDXF key
+    // Daemon RPC filter uses the vdxfid (i-address form). The daemon normalizes
+    // internally; FQN is not accepted as a filter arg.
     const primeInauguralKey = VDXF_KEYS.primeInaugural;
     const identityContent = await getIdentityContent(
       identity,
@@ -37,10 +38,13 @@ export const GET: RequestHandler = async ({ url }) => {
       );
     }
 
-    // Check if the identity has character content
+    // Plan §9.3: accept both FQN and i-address outer keys — daemon normalization
+    // on storage is undocumented.
     const contentMultiMap = identityContent.identity?.contentmultimap;
+    const hasEntries = contentMultiMap &&
+      (contentMultiMap[VDXF_KEYS.primeInauguralFqn] || contentMultiMap[VDXF_KEYS.primeInaugural]);
 
-    if (!contentMultiMap || !contentMultiMap[primeInauguralKey]) {
+    if (!hasEntries) {
       return json({
         identity: identity,
         identityAddress: identityContent.identity?.identityaddress,
