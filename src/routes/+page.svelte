@@ -44,6 +44,7 @@
 	// Storage data
 	let storageRequestId = '';
 	let storageTxid = '';
+	let storageVerified = false;
 	let storageDeeplinkUri = '';
 	let storageQrDataUrl = '';
 
@@ -276,9 +277,10 @@
 				const response = await fetch(`/api/storage/status?requestId=${storageRequestId}`);
 				const data = await response.json();
 
-				if (data.status === 'stored') {
+				if (data.status === 'received') {
 					pollTimeout = null;
 					storageTxid = data.txid;
+					storageVerified = !!data.verified;
 					state = 'complete';
 				} else {
 					pollTimeout = setTimeout(poll, 3000);
@@ -316,6 +318,7 @@
 		characterName = '';
 		storageRequestId = '';
 		storageTxid = '';
+		storageVerified = false;
 		storageDeeplinkUri = '';
 		storageQrDataUrl = '';
 	}
@@ -553,7 +556,11 @@
 					Created by <span class="text-accent">{character.userFriendlyName}</span>
 				</p>
 				{#if storageTxid}
-					<p class="text-xs text-[var(--color-success)] mt-2">Stored on-chain</p>
+					{#if storageVerified}
+						<p class="text-xs text-[var(--color-success)] mt-2">Broadcast to mempool</p>
+					{:else}
+						<p class="text-xs text-secondary mt-2">Still waiting…</p>
+					{/if}
 				{/if}
 			</header>
 

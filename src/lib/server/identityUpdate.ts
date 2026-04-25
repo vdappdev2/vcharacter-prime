@@ -6,7 +6,6 @@
  * Stateless - no server-side storage required.
  */
 
-import { VerusIdInterface } from 'verusid-ts-client';
 import {
 	IdentityUpdateRequestDetails,
 	GenericRequest,
@@ -24,15 +23,10 @@ import { env } from '$env/dynamic/private';
 import { VERUS_RPC, CHAIN_IDS } from '../config';
 import type { StoredCharacter } from '../types';
 import { buildCharacterContentMap, buildAchievementContentMap, type AchievementProofData } from '../vdxf';
-import { getIdentity } from './verus';
+import { getIdentity, withVerusIdFallback } from './verus';
 
 const SERVICE_IDENTITY_WIF = env.SERVICE_IDENTITY_WIF || '';
 const SERVICE_IDENTITY_IADDRESS = env.SERVICE_IDENTITY_IADDRESS || '';
-
-function getVerusIdInterface(): VerusIdInterface {
-	const chainId = CHAIN_IDS[VERUS_RPC.chainId === 'vrsctest' ? 'testnet' : 'mainnet'];
-	return new VerusIdInterface(chainId, VERUS_RPC.endpoint);
-}
 
 function generateRandomIAddress(): string {
 	const hash = randomBytes(20);
@@ -51,6 +45,31 @@ export function isStorageConfigured(): boolean {
 		SERVICE_IDENTITY_WIF !== 'YOUR_WIF_HERE' &&
 		!!SERVICE_IDENTITY_IADDRESS
 	);
+}
+
+/**
+ * Verify a wallet-reported txid against the chain (mempool included).
+ *
+ * Calls getidentity with height=-1 so mempool entries count. If the chain's
+ * latest update on the signing identity has the same txid the wallet reported,
+ * we know the wallet really broadcast our request. If the chain hasn't seen
+ * it yet (network propagation, slow daemon), we return false — the caller
+ * should still record the reported txid and surface "still waiting" in the UI.
+ *
+ * Returns false on RPC failure too, since "verified" can only be true when we
+ * positively confirmed.
+ */
+export async function verifyStorageOnChain(
+	signingId: string,
+	reportedTxid: string,
+): Promise<boolean> {
+	try {
+		const info = await getIdentity(signingId, -1);
+		return info.txid === reportedTxid;
+	} catch (err) {
+		console.warn('[verifyStorageOnChain] lookup failed:', err);
+		return false;
+	}
 }
 
 /**
@@ -122,9 +141,11 @@ export async function createCharacterStorageRequest(
 		request.setIsTestnet();
 	}
 
-	// Sign the request - library handles identity validation and height fetching
-	const verusId = getVerusIdInterface();
-	const signedRequest = await verusId.signGenericRequest(request, SERVICE_IDENTITY_WIF);
+	// Sign the request — withVerusIdFallback retries against the configured
+	// fallback endpoint on transient primary-RPC failures.
+	const signedRequest = await withVerusIdFallback((verusId) =>
+		verusId.signGenericRequest(request, SERVICE_IDENTITY_WIF),
+	);
 
 	return {
 		requestId,
@@ -201,9 +222,11 @@ export async function createAchievementStorageRequest(
 		request.setIsTestnet();
 	}
 
-	// Sign the request - library handles identity validation and height fetching
-	const verusId = getVerusIdInterface();
-	const signedRequest = await verusId.signGenericRequest(request, SERVICE_IDENTITY_WIF);
+	// Sign the request — withVerusIdFallback retries against the configured
+	// fallback endpoint on transient primary-RPC failures.
+	const signedRequest = await withVerusIdFallback((verusId) =>
+		verusId.signGenericRequest(request, SERVICE_IDENTITY_WIF),
+	);
 
 	return {
 		requestId,

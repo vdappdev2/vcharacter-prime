@@ -18,7 +18,8 @@ import {
 	IdentityUpdateResponseOrdinalVDXFObject,
 	IdentityUpdateResponseDetails,
 } from 'verus-typescript-primitives';
-import { storeStorageTxid, isKvConfigured } from '$lib/server/kv';
+import { storeStorageResult, isKvConfigured } from '$lib/server/kv';
+import { verifyStorageOnChain } from '$lib/server/identityUpdate';
 
 export const GET: RequestHandler = async ({ url }) => {
 	if (!isKvConfigured()) {
@@ -36,14 +37,21 @@ export const GET: RequestHandler = async ({ url }) => {
 	}
 
 	try {
-		const txid = extractTxid(responseData);
-		if (!txid) {
+		const parsed = parseStorageResponse(responseData);
+		if (!parsed) {
 			return htmlResponse(errorPage('Invalid response format'), 400);
 		}
+		const { txid, signingId } = parsed;
 
-		const stored = await storeStorageTxid(requestId, txid);
+		// Verify against chain (mempool included). False means the daemon hasn't
+		// seen the tx yet — record anyway, the UI surfaces "still waiting."
+		const verified = signingId
+			? await verifyStorageOnChain(signingId, txid)
+			: false;
+
+		const stored = await storeStorageResult(requestId, txid, verified);
 		if (!stored) {
-			console.warn('[storage/callback] duplicate txid for requestId — rejecting second write');
+			console.warn('[storage/callback] duplicate result for requestId — rejecting second write');
 			return htmlResponse(
 				errorPage('A storage result was already received for this request.'),
 				409,
@@ -60,11 +68,14 @@ export const GET: RequestHandler = async ({ url }) => {
 };
 
 /**
- * Decode a base64url-encoded GenericResponse and pull out the identityupdate txid.
+ * Decode a base64url-encoded GenericResponse and pull out the identityupdate
+ * txid plus the signing identity (so we can verify the txid on chain).
  * GenericResponse has no static fromQrString/fromWalletDeeplinkUri helpers —
  * decode manually per plan §9.4.
  */
-function extractTxid(responseData: string): string | null {
+function parseStorageResponse(
+	responseData: string,
+): { txid: string; signingId: string | null } | null {
 	try {
 		const buf = Buffer.from(responseData, 'base64url');
 		const response = new GenericResponse();
@@ -84,7 +95,14 @@ function extractTxid(responseData: string): string | null {
 		}
 
 		// txid is stored in natural order; reverse for display
-		return Buffer.from(txidBuffer as unknown as Uint8Array).reverse().toString('hex');
+		const txid = Buffer.from(txidBuffer as unknown as Uint8Array).reverse().toString('hex');
+
+		// Signing identity comes from the envelope signature, used for the
+		// on-chain verification step. Optional — if missing, we still record the
+		// txid but mark verified=false.
+		const signingId = response.signature?.identityID?.toIAddress?.() ?? null;
+
+		return { txid, signingId };
 	} catch (err) {
 		console.error('Storage callback parse error:', err);
 		return null;

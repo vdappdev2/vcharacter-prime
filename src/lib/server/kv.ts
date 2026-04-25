@@ -92,29 +92,52 @@ export async function consumeCommitmentResponse(challengeId: string): Promise<vo
 }
 
 /**
- * Store a completed storage txid (hex, display order) for the requesting requestId.
- * The GenericResponse is parsed in the callback endpoint, not here — we only persist
- * the extracted txid so /api/storage/status stays trivial.
+ * Storage result persisted by the callback for /api/storage/status to drain.
  *
+ * `verified === true` means we confirmed via getidentity(-1) that the chain's
+ * latest update on the signing identity matches the wallet-reported txid.
+ * `verified === false` means the daemon hadn't seen it yet at callback time —
+ * the txid is still recorded so the UI can show "still waiting."
+ */
+export interface StorageResult {
+	txid: string;
+	verified: boolean;
+}
+
+/**
+ * Store the wallet-reported txid + verification flag for this requestId.
  * NX semantics — same rationale as storeCommitmentResponse.
  *
  * @returns true if stored, false if an entry already existed.
  */
-export async function storeStorageTxid(requestId: string, txid: string): Promise<boolean> {
+export async function storeStorageResult(
+	requestId: string,
+	txid: string,
+	verified: boolean,
+): Promise<boolean> {
 	const r = getRedis();
-	const result = await r.set(storageKey(requestId), txid, { ex: RESPONSE_TTL, nx: true });
+	const value = JSON.stringify({ txid, verified });
+	const result = await r.set(storageKey(requestId), value, { ex: RESPONSE_TTL, nx: true });
 	return result === 'OK';
 }
 
 /**
- * Get and delete a storage txid (one-time retrieval).
+ * Get and delete a storage result (one-time retrieval).
  */
-export async function consumeStorageTxid(requestId: string): Promise<string | null> {
+export async function consumeStorageResult(requestId: string): Promise<StorageResult | null> {
 	const r = getRedis();
 	const key = storageKey(requestId);
-	const data = await r.get<string>(key);
-	if (data) {
-		await r.del(key);
+	const data = await r.get<StorageResult | string>(key);
+	if (!data) return null;
+	await r.del(key);
+	// @upstash/redis auto-parses JSON when the stored value parses, but defensively
+	// handle the string case in case of future client-version drift.
+	if (typeof data === 'string') {
+		try {
+			return JSON.parse(data) as StorageResult;
+		} catch {
+			return null;
+		}
 	}
 	return data;
 }

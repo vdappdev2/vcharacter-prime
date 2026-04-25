@@ -1,7 +1,7 @@
 /**
  * Combat System for The Primordial Trial
  *
- * Turn-based combat with provably fair dice rolls.
+ * Turn-based combat with deterministic dice rolls (verifiable replay).
  */
 
 import type { StoredCharacter, Element, SpiritAnimal } from '../types';
@@ -471,8 +471,8 @@ export function getPlayerDefense(character: StoredCharacter, debuffs: ActiveEffe
 /**
  * Resolve a combat round
  *
- * Note: In actual implementation, rolls will be provably fair.
- * This function takes pre-rolled values for resolution.
+ * Takes pre-derived dice values; the caller is responsible for sourcing
+ * them from the deterministic dice system.
  */
 export function resolveCombatRound(
   state: GameState,

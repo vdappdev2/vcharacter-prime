@@ -239,7 +239,7 @@ Battle against **The Primordial** — a being of pure elemental chaos.
 This is where every stat comes together. STR and INT power your attacks, DEX and WIS protect you, CON keeps you standing, and the gifts from your CHA bargain tip the scales.
 
 ### Scene 7: Mark of the Worthy
-Victory! Your achievement is recorded on-chain — provably fair, permanently verifiable.
+Victory! Your achievement is recorded on-chain — permanently verifiable as part of your character's history.
 
 ---
 

@@ -112,7 +112,7 @@ export function buildCharacterContentMap(character: StoredCharacter): ContentMul
     wisdom: character.stats.wis,
     charisma: character.stats.cha,
   };
-  entries.push(buildDataDescriptor(VDXF_KEYS.labels.stats, statsData, 'application/json'));
+  entries.push(buildDataDescriptor(VDXF_KEYS.labels.stats, statsData));
 
   // Traits entry
   const traitsData = {
@@ -120,7 +120,7 @@ export function buildCharacterContentMap(character: StoredCharacter): ContentMul
     spirit: character.traits.spiritAnimal,
     sex: character.traits.sex,
   };
-  entries.push(buildDataDescriptor(VDXF_KEYS.labels.traits, traitsData, 'application/json'));
+  entries.push(buildDataDescriptor(VDXF_KEYS.labels.traits, traitsData));
 
   // Proof entry - minimal data needed for verification
   // Full commitmentResponse is large; store essential fields only
@@ -132,7 +132,7 @@ export function buildCharacterContentMap(character: StoredCharacter): ContentMul
     rollBlockHash: character.rollBlockHash,
     commitmentBlockHeight: character.commitment.signedBlockHeight,
   };
-  entries.push(buildDataDescriptor(VDXF_KEYS.labels.proof, proofData, 'application/json'));
+  entries.push(buildDataDescriptor(VDXF_KEYS.labels.proof, proofData));
 
   // Plan §9.2: outer key MUST be the FQN string for custom keys. Wallet rejects
   // raw i-address outer keys with "Cannot update with unknown key".
@@ -151,19 +151,25 @@ export interface AchievementProofData {
   characterName: string;
   characterRollBlockHeight: number;
 
-  // Provably fair proof for the boss fight
+  // Deterministic-replay proof for the boss fight
   bossSceneSeed: string;
   bossSceneBlockHeight: number;
   bossSceneBlockHash: string;
 
-  // Player actions sequence for replay verification
+  // Player actions sequence (verifiable replay input)
   playerActions: ('attack' | 'defend' | 'special')[];
 
-  // Summary stats (verifiable via replay)
+  // Summary stats
   difficulty: 'standard' | 'hard';
   finalHp: number;
   roundsToWin: number;
   completedAtBlock: number;
+
+  // Trial choices (optional — older achievements may not have these)
+  pathChosen?: 'might' | 'cunning' | 'spirit' | 'shadows' | 'endurance' | 'charm';
+  bargainChoice?: 'power' | 'wisdom';
+  bargainBothBuffs?: boolean;
+  spiritAbilityUsed?: boolean;
 }
 
 /**
@@ -180,9 +186,7 @@ export function buildAchievementContentMap(achievement: AchievementProofData): C
   const entries: DataDescriptorWrapper[] = [];
 
   // Single entry containing all achievement data
-  entries.push(
-    buildDataDescriptor('.achievement', achievement, 'application/json')
-  );
+  entries.push(buildDataDescriptor('.achievement', achievement));
 
   // Plan §9.2: outer key MUST be the FQN string for custom keys.
   return {
@@ -452,6 +456,10 @@ export interface ParsedAchievementData {
   finalHp?: number;
   roundsToWin?: number;
   completedAtBlock?: number;
+  pathChosen?: 'might' | 'cunning' | 'spirit' | 'shadows' | 'endurance' | 'charm';
+  bargainChoice?: 'power' | 'wisdom';
+  bargainBothBuffs?: boolean;
+  spiritAbilityUsed?: boolean;
 }
 
 /**

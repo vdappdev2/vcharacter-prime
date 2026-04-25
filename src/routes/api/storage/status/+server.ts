@@ -10,7 +10,7 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { consumeStorageTxid, isKvConfigured } from '$lib/server/kv';
+import { consumeStorageResult, isKvConfigured } from '$lib/server/kv';
 
 export const GET: RequestHandler = async ({ url }) => {
 	if (!isKvConfigured()) {
@@ -23,9 +23,11 @@ export const GET: RequestHandler = async ({ url }) => {
 	}
 
 	try {
-		const txid = await consumeStorageTxid(requestId);
-		if (txid) {
-			return json({ status: 'stored', txid });
+		const result = await consumeStorageResult(requestId);
+		if (result) {
+			// `verified === true`: chain (incl. mempool) confirms the wallet's txid.
+			// `verified === false`: daemon hadn't seen it yet — UI shows "still waiting."
+			return json({ status: 'received', txid: result.txid, verified: result.verified });
 		}
 		return json({ status: 'pending' });
 	} catch (error) {

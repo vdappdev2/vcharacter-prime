@@ -1,7 +1,7 @@
 /**
  * Game Block API
  *
- * Provides block data for provably fair gameplay rolls.
+ * Provides block data for deterministic gameplay rolls (verifiable replay).
  *
  * GET /api/game/block
  *   Returns current block height

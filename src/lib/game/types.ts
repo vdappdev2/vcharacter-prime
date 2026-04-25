@@ -11,7 +11,7 @@ import type { StoredCharacter, Element, SpiritAnimal } from '../types';
 // ============================================================================
 
 /**
- * A single provably fair dice roll during gameplay
+ * A single dice roll during gameplay
  */
 export interface GameRoll {
   /** Unique label for this roll (e.g., "scene3_attack_1") */

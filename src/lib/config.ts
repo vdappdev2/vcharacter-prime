@@ -16,7 +16,11 @@ export const isProd = import.meta.env.PROD;
 export const RPC_ENDPOINTS = {
   testnet: {
     primary: 'https://api.verustest.net',
-    fallback: 'https://rpc.vrsc.syncproof.net',
+    // No fallback for testnet. syncproof.net is a mainnet (VRSC) daemon —
+    // falling over to it would silently return mainnet blocks/identities and
+    // break re-derivation in /api/character/verify. If a vrsctest fallback
+    // appears later, set it here.
+    fallback: '',
   },
   mainnet: {
     primary: 'https://api.verus.services',

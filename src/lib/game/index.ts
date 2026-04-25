@@ -96,7 +96,3 @@ export {
   addDebuff,
 } from './engine';
 export type { PathChoice, BargainChoice } from './engine';
-
-// Verification
-export { verifyBossFight } from './verification';
-export type { ReplayVerificationResult } from './verification';

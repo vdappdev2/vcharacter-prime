@@ -1,7 +1,4 @@
 <script lang="ts">
-	import { verifyBossFight, type ReplayVerificationResult } from '$lib/game';
-	import type { Element, SpiritAnimal } from '$lib/types';
-
 	// State machine for verification flow
 	type FlowState = 'idle' | 'loading-list' | 'select' | 'loading-verify' | 'success' | 'error';
 
@@ -35,12 +32,12 @@
 		finalHp: number;
 		roundsToWin: number;
 		completedAtBlock: number;
+		pathChosen?: 'might' | 'cunning' | 'spirit' | 'shadows' | 'endurance' | 'charm';
+		bargainChoice?: 'power' | 'wisdom';
+		bargainBothBuffs?: boolean;
+		spiritAbilityUsed?: boolean;
 	};
 	let achievements: Achievement[] = [];
-
-	// Achievement verification results (keyed by completedAtBlock)
-	let achievementVerificationResults: Map<number, ReplayVerificationResult> = new Map();
-	let verifyingAchievement: number | null = null;
 
 	// Helper to get achievements for a character
 	function getCharacterAchievements(rollBlockHeight: number): Achievement[] {
@@ -148,60 +145,12 @@
 		characters = [];
 		achievements = [];
 		verificationResult = null;
-		achievementVerificationResults = new Map();
-		verifyingAchievement = null;
 	}
 
 	function backToSelect() {
 		state = 'select';
 		verificationResult = null;
 		error = null;
-		achievementVerificationResults = new Map();
-		verifyingAchievement = null;
-	}
-
-	async function verifyAchievement(achievement: Achievement) {
-		if (!verificationResult?.character) return;
-
-		verifyingAchievement = achievement.completedAtBlock;
-
-		try {
-			const character = {
-				name: verificationResult.character.name,
-				stats: {
-					str: verificationResult.character.stats.strength,
-					dex: verificationResult.character.stats.dexterity,
-					con: verificationResult.character.stats.constitution,
-					int: verificationResult.character.stats.intelligence,
-					wis: verificationResult.character.stats.wisdom,
-					cha: verificationResult.character.stats.charisma,
-				},
-				traits: {
-					element: verificationResult.character.traits.element as Element,
-					spiritAnimal: verificationResult.character.traits.spirit as SpiritAnimal,
-					sex: verificationResult.character.traits.sex as 'Male' | 'Female',
-				},
-			};
-
-			const result = await verifyBossFight(character, achievement);
-			achievementVerificationResults = new Map(achievementVerificationResults).set(
-				achievement.completedAtBlock,
-				result
-			);
-		} catch (err) {
-			achievementVerificationResults = new Map(achievementVerificationResults).set(
-				achievement.completedAtBlock,
-				{
-					valid: false,
-					expectedOutcome: 'victory',
-					expectedFinalHp: 0,
-					expectedRounds: 0,
-					error: err instanceof Error ? err.message : 'Verification failed',
-				}
-			);
-		} finally {
-			verifyingAchievement = null;
-		}
 	}
 
 	function formatModifier(mod: number): string {
@@ -212,6 +161,17 @@
 	function truncateHash(hash: string, length: number = 16): string {
 		if (hash.length <= length * 2) return hash;
 		return `${hash.slice(0, length)}...${hash.slice(-length)}`;
+	}
+
+	function capitalize(s: string): string {
+		return s.charAt(0).toUpperCase() + s.slice(1);
+	}
+
+	function formatBargain(choice?: 'power' | 'wisdom', bothBuffs?: boolean): string {
+		if (!choice) return '—';
+		if (!bothBuffs) return capitalize(choice);
+		const other = choice === 'power' ? 'Wisdom' : 'Power';
+		return `${capitalize(choice)} (+ ${other})`;
 	}
 
 	// Stat name mapping
@@ -437,9 +397,8 @@
 							</h4>
 							<div class="grid gap-4">
 								{#each charAchievements as achievement, i}
-									{@const verifyResult = achievementVerificationResults.get(achievement.completedAtBlock)}
-									{@const canVerify = achievement.bossSceneBlockHash && achievement.playerActions}
-									<div class="bg-elevated rounded-lg p-4 border {verifyResult?.valid ? 'border-[var(--color-success)]' : verifyResult ? 'border-[var(--color-error)]' : 'border-[var(--color-border)]'}">
+									{@const hasProofData = achievement.bossSceneBlockHash && achievement.playerActions}
+									<div class="bg-elevated rounded-lg p-4 border border-[var(--color-border)]">
 										<div class="flex items-center justify-between mb-2">
 											<div class="flex items-center gap-2">
 												<span class="text-2xl">{achievement.difficulty === 'hard' ? '🏆' : '🎖️'}</span>
@@ -466,51 +425,31 @@
 											</div>
 										</div>
 
-										<!-- Verification Status -->
-										{#if verifyResult}
-											<div class="border-t border-[var(--color-border)] pt-3 mt-3">
-												{#if verifyResult.valid}
-													<div class="flex items-center gap-2 text-[var(--color-success)]">
-														<span class="text-xl">&#10003;</span>
-														<span class="font-bold">REPLAY VERIFIED</span>
-													</div>
-													<p class="text-xs text-secondary mt-1">
-														Combat replay matched: {verifyResult.expectedRounds} rounds, {verifyResult.expectedFinalHp} HP remaining
-													</p>
-												{:else}
-													<div class="flex items-center gap-2 text-[var(--color-error)]">
-														<span class="text-xl">&#10007;</span>
-														<span class="font-bold">VERIFICATION FAILED</span>
-													</div>
-													<p class="text-xs text-secondary mt-1">
-														{verifyResult.error || `Expected: ${verifyResult.expectedRounds} rounds, ${verifyResult.expectedFinalHp} HP`}
-													</p>
-												{/if}
-											</div>
-										{:else if canVerify}
-											<div class="border-t border-[var(--color-border)] pt-3 mt-3">
-												<button
-													class="btn btn-secondary text-sm w-full"
-													on:click={() => verifyAchievement(achievement)}
-													disabled={verifyingAchievement === achievement.completedAtBlock}
-												>
-													{#if verifyingAchievement === achievement.completedAtBlock}
-														Verifying...
-													{:else}
-														Verify Combat Replay
-													{/if}
-												</button>
-											</div>
-										{:else}
-											<div class="border-t border-[var(--color-border)] pt-3 mt-3">
-												<p class="text-xs text-secondary italic">
-													Legacy achievement (missing replay data)
-												</p>
+										{#if achievement.pathChosen || achievement.bargainChoice || achievement.spiritAbilityUsed !== undefined}
+											<div class="grid grid-cols-3 gap-4 text-sm mb-3">
+												<div>
+													<span class="text-secondary">Path:</span>
+													<span class="text-primary ml-1">
+														{achievement.pathChosen ? capitalize(achievement.pathChosen) : '—'}
+													</span>
+												</div>
+												<div>
+													<span class="text-secondary">Bargain:</span>
+													<span class="text-primary ml-1">
+														{formatBargain(achievement.bargainChoice, achievement.bargainBothBuffs)}
+													</span>
+												</div>
+												<div>
+													<span class="text-secondary">Spirit Ability:</span>
+													<span class="text-primary ml-1">
+														{achievement.spiritAbilityUsed === undefined ? '—' : achievement.spiritAbilityUsed ? 'Used' : 'Not used'}
+													</span>
+												</div>
 											</div>
 										{/if}
 
 										<!-- Achievement Proof Details (Collapsible) -->
-										{#if canVerify}
+										{#if hasProofData}
 											<details class="mt-3">
 												<summary class="cursor-pointer text-xs text-accent">Proof Details</summary>
 												<div class="mt-2 space-y-1 text-xs">

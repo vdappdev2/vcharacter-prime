@@ -6,7 +6,7 @@ Provably fair dice-based character creation with on-chain storage using Verus VD
 
 - **Provably Fair Dice**: Character stats derived from blockchain randomness using commit-reveal scheme
 - **On-Chain Storage**: Characters and achievements stored in VerusID contentmultimap via VDXF
-- **The Primordial Trial**: Turn-based combat game with provably fair rolls
+- **The Primordial Trial**: Turn-based combat game with deterministic, verifiable-replay rolls
 - **Cross-Device Wallet Flow**: QR code scanning works across devices via Redis
 
 ## Requirements

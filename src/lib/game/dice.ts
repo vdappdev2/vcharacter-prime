@@ -1,8 +1,10 @@
 /**
- * Provably Fair Dice System for Gameplay
+ * Deterministic Dice System for Gameplay (verifiable replay)
  *
- * Extends the character creation dice system for gameplay rolls.
- * Uses the same HMAC-SHA256 derivation with labeled keys.
+ * Extends the character-creation dice primitive to in-game rolls. Same
+ * HMAC-SHA256 derivation with labeled keys — but unlike character creation,
+ * gameplay seeds are not bound to a wallet signature, so this gives
+ * deterministic, replayable rolls rather than provable fairness.
  */
 
 import { sha256, hmacSha256, generateClientSeed, sha256String, bufferToHex } from '../crypto';

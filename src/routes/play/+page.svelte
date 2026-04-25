@@ -62,7 +62,7 @@
 	let bargainRollResult: number | null = null;
 	let canGetBoth = false;
 
-	// ========== Provably Fair Dice State ==========
+	// ========== Deterministic Dice State (verifiable replay) ==========
 	let sceneSeed: string = '';
 	let sceneSeedHash: string = '';
 	let sceneBlockHeight: number = 0;
@@ -85,6 +85,7 @@
 	let achievementQrDataUrl: string = '';
 	let achievementStored: boolean = false;
 	let achievementTxid: string = '';
+	let achievementVerified: boolean = false;
 	let storingAchievement: boolean = false;
 	let achievementPollTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -106,7 +107,7 @@
 		if (achievementPollTimeout) clearTimeout(achievementPollTimeout);
 	});
 
-	// ========== Provably Fair Dice Functions ==========
+	// ========== Deterministic Dice Functions ==========
 	async function commitToScene(): Promise<void> {
 		// Generate a new seed for this scene
 		sceneSeed = generateRollSeed();
@@ -337,7 +338,7 @@
 			return;
 		}
 
-		// Use provably fair dice rolls
+		// Derive deterministic dice rolls
 		const playerAttackRoll = await deriveRoll('player_attack', 20);
 		const playerDamageRoll = (await deriveRoll('player_damage', 6)) + 2; // d6+2 weapon
 		const enemyAttackRoll = await deriveRoll('enemy_attack', 20);
@@ -421,7 +422,7 @@
 			return;
 		}
 
-		// Use provably fair dice roll
+		// Derive deterministic dice roll
 		const rollResult = await deriveRoll(`puzzle_${check.id}`, 20);
 		const statMod = gameState.character.stats[check.stat].modifier;
 		const total = rollResult + statMod;
@@ -479,7 +480,7 @@
 			return;
 		}
 
-		// Use provably fair dice roll
+		// Derive deterministic dice roll
 		const rollResult = await deriveRoll('bargain_cha', 20);
 		bargainRollResult = rollResult;
 
@@ -541,9 +542,13 @@
 		storingAchievement = true;
 
 		try {
-			// Determine difficulty (hard mode if power chosen without both)
-			const hardMode =
-				gameState.bargainChoice === 'power' && !gameState.choices.includes('bargain:power:both');
+			// CHA-passing players who chose either bargain option get both buffs.
+			// State encodes this in the choices audit string as "bargain:<choice>:both".
+			const bargainBothBuffs = !!gameState.bargainChoice
+				&& gameState.choices.includes(`bargain:${gameState.bargainChoice}:both`);
+
+			// Hard mode = chose power AND didn't pass CHA (so didn't also get wisdom).
+			const hardMode = gameState.bargainChoice === 'power' && !bargainBothBuffs;
 
 			const achievement = {
 				characterName: gameState.character.name,
@@ -556,6 +561,10 @@
 				finalHp: gameState.hp,
 				roundsToWin: bossRoundsToWin,
 				completedAtBlock: sceneBlockHeight,
+				pathChosen: gameState.pathChosen,
+				bargainChoice: gameState.bargainChoice,
+				bargainBothBuffs,
+				spiritAbilityUsed: gameState.spiritAbilityUsed,
 			};
 
 			const response = await fetch('/api/achievement/store', {
@@ -606,9 +615,10 @@
 				const response = await fetch(`/api/storage/status?requestId=${achievementRequestId}`);
 				const data = await response.json();
 
-				if (data.status === 'stored') {
+				if (data.status === 'received') {
 					achievementPollTimeout = null;
 					achievementTxid = data.txid;
+					achievementVerified = !!data.verified;
 					achievementStored = true;
 				} else {
 					achievementPollTimeout = setTimeout(poll, 3000);
@@ -649,7 +659,7 @@
 		bargainRollResult = null;
 		canGetBoth = false;
 
-		// Reset provably fair state
+		// Reset deterministic dice state
 		sceneSeed = '';
 		sceneSeedHash = '';
 		sceneBlockHeight = 0;
@@ -669,6 +679,7 @@
 		achievementQrDataUrl = '';
 		achievementStored = false;
 		achievementTxid = '';
+		achievementVerified = false;
 		storingAchievement = false;
 	}
 
@@ -1233,14 +1244,23 @@
 						<p class="text-secondary">Generating achievement proof...</p>
 					</div>
 				{:else if achievementStored && achievementTxid}
-					<div class="bg-elevated rounded-lg p-4 mb-6 text-center border border-[var(--color-success)]">
+					<div class="bg-elevated rounded-lg p-4 mb-6 text-center border {achievementVerified ? 'border-[var(--color-success)]' : 'border-[var(--color-border)]'}">
 						<div class="mb-2">
 							<span class="text-4xl">&#127942;</span>
 						</div>
-						<h3 class="text-[var(--color-success)] mb-2">Achievement Stored On-Chain!</h3>
-						<p class="text-secondary text-sm mb-2">
-							Your victory has been recorded forever on the Verus blockchain.
-						</p>
+						{#if achievementVerified}
+							<h3 class="text-[var(--color-success)] mb-2">Broadcast to mempool</h3>
+							<p class="text-secondary text-sm mb-2">
+								Your wallet broadcast the update; the daemon has seen the transaction.
+								It will be permanently recorded once confirmed in a block.
+							</p>
+						{:else}
+							<h3 class="text-secondary mb-2">Still waiting…</h3>
+							<p class="text-secondary text-sm mb-2">
+								Your wallet returned a transaction id, but the daemon hasn't seen
+								it yet. Refresh the verify page in a moment to check confirmation.
+							</p>
+						{/if}
 						<p class="text-xs text-secondary">
 							TX: <span class="hash">{achievementTxid.slice(0, 16)}...{achievementTxid.slice(-8)}</span>
 						</p>

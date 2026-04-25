@@ -217,10 +217,13 @@ export interface IdentityInfo {
  * Get identity info
  *
  * @param identity - Identity name (e.g., "testidx@") or i-address
+ * @param height - Optional height; -1 includes mempool, 0 (or omitted) = current
  * @returns Identity info
  */
-export async function getIdentity(identity: string): Promise<IdentityInfo> {
-  return rpcCall<IdentityInfo>('getidentity', [identity]);
+export async function getIdentity(identity: string, height?: number): Promise<IdentityInfo> {
+  const params: unknown[] = [identity];
+  if (height !== undefined) params.push(height);
+  return rpcCall<IdentityInfo>('getidentity', params);
 }
 
 /**
