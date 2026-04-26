@@ -32,12 +32,20 @@ export async function hashRollSeed(rollSeed: string): Promise<string> {
 }
 
 /**
- * Combine block hash and roll seed into a single seed
- * @param blockHash - Verus block hash (hex string)
- * @param rollSeed - Roll seed (hex string)
- * @returns Combined seed as Uint8Array
+ * Combine block hash and roll seed into a single seed.
+ * Both MUST be 64-char lowercase hex — same length-ambiguity defense as
+ * combineSeed in `../dice.ts`. Daemon block hashes and generateRollSeed()
+ * always produce this format; the assertion catches future format drift.
  */
+const HEX64 = /^[0-9a-f]{64}$/;
+
 export async function combineGameSeed(blockHash: string, rollSeed: string): Promise<Uint8Array> {
+  if (!HEX64.test(blockHash)) {
+    throw new Error('blockHash must be a 64-character lowercase hex string');
+  }
+  if (!HEX64.test(rollSeed)) {
+    throw new Error('rollSeed must be a 64-character lowercase hex string');
+  }
   const combined = blockHash + rollSeed;
   const encoder = new TextEncoder();
   return sha256(encoder.encode(combined));

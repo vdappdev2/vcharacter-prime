@@ -8,12 +8,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import type { AchievementProofData } from '$lib/vdxf';
-import { buildAchievementContentMap } from '$lib/vdxf';
 import {
 	createAchievementStorageRequest,
 	isStorageConfigured,
 } from '$lib/server/identityUpdate';
-import { getIdentity } from '$lib/server/verus';
 
 export const POST: RequestHandler = async ({ request, url }) => {
 	// Check if storage is configured
@@ -60,24 +58,6 @@ export const POST: RequestHandler = async ({ request, url }) => {
 
 		// Create the storage request
 		const result = await createAchievementStorageRequest(achievement, identity, callbackUrl);
-
-		// Debug: Log deeplink info
-		console.log('=== Achievement Storage Request Debug ===');
-		console.log('Deeplink length:', result.deeplinkUri.length);
-		console.log('QR string length:', result.qrString.length);
-
-		// Debug: Output complete updateidentity command for manual testing
-		const identityInfo = await getIdentity(identity);
-		const contentmultimap = buildAchievementContentMap(achievement);
-		const updateIdentityCmd = {
-			name: identityInfo.identity.name,
-			parent: identityInfo.identity.parent,
-			contentmultimap,
-		};
-		console.log('\n=== MANUAL ACHIEVEMENT UPDATEIDENTITY COMMAND ===');
-		console.log('Copy and paste this command to manually store the achievement:\n');
-		console.log(`./verus -chain=vrsctest updateidentity '${JSON.stringify(updateIdentityCmd)}'`);
-		console.log('\n=== END COMMAND ===\n');
 
 		return json({
 			requestId: result.requestId,

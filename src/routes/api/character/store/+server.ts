@@ -11,8 +11,6 @@ import {
   createCharacterStorageRequest,
   isStorageConfigured,
 } from '$lib/server/identityUpdate';
-import { buildCharacterContentMap } from '$lib/vdxf';
-import { getIdentity } from '$lib/server/verus';
 import type { StoredCharacter } from '$lib/types';
 
 export const POST: RequestHandler = async ({ request, url }) => {
@@ -53,25 +51,6 @@ export const POST: RequestHandler = async ({ request, url }) => {
 
     // Create the storage request
     const result = await createCharacterStorageRequest(character, callbackUrl);
-
-    // Debug: Log deeplink info
-    console.log('=== Storage Request Debug ===');
-    console.log('Deeplink length:', result.deeplinkUri.length);
-    console.log('QR string length:', result.qrString.length);
-
-    // Debug: Output complete updateidentity command for manual testing
-    // Fetch identity to get proper name and parent (like vtimestamp does)
-    const identityInfo = await getIdentity(character.userIdentity);
-    const contentmultimap = buildCharacterContentMap(character);
-    const updateIdentityCmd = {
-      name: identityInfo.identity.name,
-      parent: identityInfo.identity.parent,
-      contentmultimap,
-    };
-    console.log('\n=== MANUAL UPDATEIDENTITY COMMAND ===');
-    console.log('Copy and paste this command to manually store the character:\n');
-    console.log(`./verus -chain=vrsctest updateidentity '${JSON.stringify(updateIdentityCmd)}'`);
-    console.log('\n=== END COMMAND ===\n');
 
     return json({
       requestId: result.requestId,

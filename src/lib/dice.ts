@@ -21,13 +21,33 @@ import {
 } from './types';
 
 /**
- * Combine block hash and client seed into a single seed using SHA-256
+ * Length-64 lowercase hex pattern. Both inputs to the seed combiners must
+ * match this so the SHA-256(blockHash || clientSeed) construction has no
+ * length ambiguity: an attacker can't construct two different (block, seed)
+ * pairs that concatenate to the same string. Daemon block hashes and
+ * generateClientSeed() both produce exactly this format today; this guard
+ * exists to make any future format drift fail fast instead of silently
+ * corrupting rolls.
+ */
+const HEX64 = /^[0-9a-f]{64}$/;
+
+function assertHex64(label: string, value: string): void {
+  if (!HEX64.test(value)) {
+    throw new Error(`${label} must be a 64-character lowercase hex string`);
+  }
+}
+
+/**
+ * Combine block hash and client seed into a single seed using SHA-256.
+ * Inputs MUST be 64-char lowercase hex (enforced) — see HEX64 above.
  *
- * @param blockHash - Verus block hash (hex string)
- * @param clientSeed - Client-generated random seed (hex string)
+ * @param blockHash - Verus block hash (64-char lowercase hex)
+ * @param clientSeed - Client-generated random seed (64-char lowercase hex)
  * @returns Combined seed as Uint8Array
  */
 export async function combineSeed(blockHash: string, clientSeed: string): Promise<Uint8Array> {
+  assertHex64('blockHash', blockHash);
+  assertHex64('clientSeed', clientSeed);
   const combined = blockHash + clientSeed;
   const encoder = new TextEncoder();
   return sha256(encoder.encode(combined));

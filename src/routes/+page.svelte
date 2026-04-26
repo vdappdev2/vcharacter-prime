@@ -4,9 +4,45 @@
 	import { generateClientSeed, sha256String } from '$lib/crypto';
 	import type { StoredCharacter, CharacterStats } from '$lib/types';
 
-	// localStorage keys
+	// sessionStorage keys — survives page refresh in the same tab, cleared when
+	// tab closes. Don't use localStorage: an XSS during the commit window could
+	// otherwise exfiltrate the in-flight clientSeed and race verify-stateless.
 	const STORAGE_KEY_SEED = 'vcharacter_client_seed';
 	const STORAGE_KEY_HASH = 'vcharacter_client_seed_hash';
+	// Lets a refresh resume mid-storage polling (e.g. when the desktop's network
+	// drops while the wallet has already signed and our callback wrote to Redis).
+	// Without this, the user sees a stuck "Waiting for confirmation…" page they
+	// can't recover from.
+	const STORAGE_STATE_KEY = 'vcharacter_storage_state';
+
+	interface PersistedStorageState {
+		requestId: string;
+		deeplinkUri: string;
+		character: StoredCharacter;
+	}
+
+	function saveStorageState() {
+		if (!storageRequestId || !character) return;
+		const payload: PersistedStorageState = {
+			requestId: storageRequestId,
+			deeplinkUri: storageDeeplinkUri,
+			character,
+		};
+		sessionStorage.setItem(STORAGE_STATE_KEY, JSON.stringify(payload));
+	}
+
+	function clearStorageState() {
+		sessionStorage.removeItem(STORAGE_STATE_KEY);
+	}
+
+	function loadStorageState(): PersistedStorageState | null {
+		try {
+			const raw = sessionStorage.getItem(STORAGE_STATE_KEY);
+			return raw ? (JSON.parse(raw) as PersistedStorageState) : null;
+		} catch {
+			return null;
+		}
+	}
 
 	// State machine
 	type FlowState =
@@ -60,6 +96,38 @@
 
 	onMount(() => {
 		document.addEventListener('visibilitychange', handleVisibilityChange);
+
+		// Resume an interrupted storage flow if we left state behind in
+		// sessionStorage. Covers the case where the desktop's network dropped
+		// while the wallet had already completed and Redis already had the
+		// result waiting. Polling drains it and advances to 'complete'.
+		void (async () => {
+			const persisted = loadStorageState();
+			if (!persisted) return;
+			storageRequestId = persisted.requestId;
+			storageDeeplinkUri = persisted.deeplinkUri;
+			character = persisted.character;
+			characterName = persisted.character.name;
+			userIdentity = persisted.character.userIdentity;
+			userFriendlyName = persisted.character.userFriendlyName;
+			commitmentBlockHeight = persisted.character.commitment.signedBlockHeight;
+			rollBlockHeight = persisted.character.rollBlockHeight;
+			if (persisted.deeplinkUri) {
+				try {
+					storageQrDataUrl = await QRCode.toDataURL(persisted.deeplinkUri, {
+						width: 512,
+						margin: 2,
+						errorCorrectionLevel: 'L',
+						color: { dark: '#000000', light: '#ffffff' },
+					});
+				} catch {
+					// Non-fatal — polling can still complete without the QR.
+				}
+			}
+			state = 'storing';
+			startStoragePolling(true);
+		})();
+
 		return () => {
 			document.removeEventListener('visibilitychange', handleVisibilityChange);
 		};
@@ -80,9 +148,10 @@
 			clientSeed = await generateClientSeed();
 			clientSeedHash = await sha256String(clientSeed);
 
-			// Store in localStorage (survives page refresh)
-			localStorage.setItem(STORAGE_KEY_SEED, clientSeed);
-			localStorage.setItem(STORAGE_KEY_HASH, clientSeedHash);
+			// Persist for same-tab refresh recovery; sessionStorage scopes the
+			// secret to this tab only.
+			sessionStorage.setItem(STORAGE_KEY_SEED, clientSeed);
+			sessionStorage.setItem(STORAGE_KEY_HASH, clientSeedHash);
 
 			state = 'committing';
 
@@ -115,8 +184,8 @@
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Unknown error';
 			state = 'idle';
-			localStorage.removeItem(STORAGE_KEY_SEED);
-			localStorage.removeItem(STORAGE_KEY_HASH);
+			sessionStorage.removeItem(STORAGE_KEY_SEED);
+			sessionStorage.removeItem(STORAGE_KEY_HASH);
 		}
 	}
 
@@ -188,8 +257,8 @@
 				rollBlockHeight = data.verification.rollBlockHeight;
 
 				// Clear stored seed
-				localStorage.removeItem(STORAGE_KEY_SEED);
-				localStorage.removeItem(STORAGE_KEY_HASH);
+				sessionStorage.removeItem(STORAGE_KEY_SEED);
+				sessionStorage.removeItem(STORAGE_KEY_HASH);
 
 				state = 'naming';
 			}
@@ -201,8 +270,8 @@
 			}
 			error = err instanceof Error ? err.message : 'Unknown error';
 			state = 'idle';
-			localStorage.removeItem(STORAGE_KEY_SEED);
-			localStorage.removeItem(STORAGE_KEY_HASH);
+			sessionStorage.removeItem(STORAGE_KEY_SEED);
+			sessionStorage.removeItem(STORAGE_KEY_HASH);
 		}
 	}
 
@@ -262,6 +331,9 @@
 				color: { dark: '#000000', light: '#ffffff' },
 			});
 
+			// Persist enough to resume polling after a page refresh.
+			saveStorageState();
+
 			// Start polling for storage response
 			startStoragePolling();
 		} catch (err) {
@@ -282,6 +354,7 @@
 					storageTxid = data.txid;
 					storageVerified = !!data.verified;
 					state = 'complete';
+					clearStorageState();
 				} else {
 					pollTimeout = setTimeout(poll, 3000);
 				}
@@ -299,8 +372,9 @@
 			clearTimeout(pollTimeout);
 			pollTimeout = null;
 		}
-		localStorage.removeItem(STORAGE_KEY_SEED);
-		localStorage.removeItem(STORAGE_KEY_HASH);
+		sessionStorage.removeItem(STORAGE_KEY_SEED);
+		sessionStorage.removeItem(STORAGE_KEY_HASH);
+		clearStorageState();
 
 		state = 'idle';
 		error = null;

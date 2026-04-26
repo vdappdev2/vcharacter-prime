@@ -89,6 +89,42 @@
 	let storingAchievement: boolean = false;
 	let achievementPollTimeout: ReturnType<typeof setTimeout> | null = null;
 
+	// Lets a refresh resume mid-achievement-storage polling (e.g. when the
+	// desktop's network drops while the wallet has already signed and our
+	// callback wrote to Redis). Mirrors the storage recovery on the main page.
+	const ACHIEVEMENT_STATE_KEY = 'vcharacter_achievement_state';
+
+	interface PersistedAchievementState {
+		requestId: string;
+		deeplinkUri: string;
+		gameState: GameState;
+		identity: string;
+	}
+
+	function saveAchievementState() {
+		if (!achievementRequestId || !gameState) return;
+		const payload: PersistedAchievementState = {
+			requestId: achievementRequestId,
+			deeplinkUri: achievementDeeplinkUri,
+			gameState,
+			identity: identityInput.trim(),
+		};
+		sessionStorage.setItem(ACHIEVEMENT_STATE_KEY, JSON.stringify(payload));
+	}
+
+	function clearAchievementState() {
+		sessionStorage.removeItem(ACHIEVEMENT_STATE_KEY);
+	}
+
+	function loadAchievementState(): PersistedAchievementState | null {
+		try {
+			const raw = sessionStorage.getItem(ACHIEVEMENT_STATE_KEY);
+			return raw ? (JSON.parse(raw) as PersistedAchievementState) : null;
+		} catch {
+			return null;
+		}
+	}
+
 	function handleVisibilityChange() {
 		if (document.visibilityState !== 'visible') return;
 		if (blockPollTimeout && waitingForBlock) startBlockPolling(true);
@@ -97,6 +133,34 @@
 
 	onMount(() => {
 		document.addEventListener('visibilitychange', handleVisibilityChange);
+
+		// Resume an interrupted achievement-storage flow if we left state behind
+		// in sessionStorage. Same recovery pattern as the main page's storage
+		// flow — handles the case where the desktop's network dropped while the
+		// wallet had already completed and Redis had the result waiting.
+		void (async () => {
+			const persisted = loadAchievementState();
+			if (!persisted) return;
+			achievementRequestId = persisted.requestId;
+			achievementDeeplinkUri = persisted.deeplinkUri;
+			gameState = persisted.gameState;
+			identityInput = persisted.identity;
+			if (persisted.deeplinkUri) {
+				try {
+					achievementQrDataUrl = await QRCode.toDataURL(persisted.deeplinkUri, {
+						width: 512,
+						margin: 2,
+						errorCorrectionLevel: 'L',
+						color: { dark: '#000000', light: '#ffffff' },
+					});
+				} catch {
+					// Non-fatal — polling can still complete without the QR.
+				}
+			}
+			viewState = 'game-over';
+			startAchievementPolling(true);
+		})();
+
 		return () => {
 			document.removeEventListener('visibilitychange', handleVisibilityChange);
 		};
@@ -597,6 +661,9 @@
 				color: { dark: '#000000', light: '#ffffff' },
 			});
 
+			// Persist enough to resume polling after a page refresh.
+			saveAchievementState();
+
 			// Start polling for storage confirmation
 			startAchievementPolling();
 		} catch (err) {
@@ -620,6 +687,7 @@
 					achievementTxid = data.txid;
 					achievementVerified = !!data.verified;
 					achievementStored = true;
+					clearAchievementState();
 				} else {
 					achievementPollTimeout = setTimeout(poll, 3000);
 				}
@@ -644,6 +712,7 @@
 			clearTimeout(achievementPollTimeout);
 			achievementPollTimeout = null;
 		}
+		clearAchievementState();
 
 		viewState = 'select-identity';
 		identityInput = '';
