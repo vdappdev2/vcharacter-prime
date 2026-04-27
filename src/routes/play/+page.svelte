@@ -623,6 +623,7 @@
 				playerActions: bossPlayerActions,
 				difficulty: hardMode ? 'hard' : 'standard',
 				finalHp: gameState.hp,
+				maxHp: gameState.maxHp,
 				roundsToWin: bossRoundsToWin,
 				completedAtBlock: sceneBlockHeight,
 				pathChosen: gameState.pathChosen,

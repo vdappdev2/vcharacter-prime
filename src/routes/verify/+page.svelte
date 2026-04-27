@@ -30,6 +30,7 @@
 		playerActions?: ('attack' | 'defend' | 'special')[];
 		difficulty: 'standard' | 'hard';
 		finalHp: number;
+		maxHp?: number;
 		roundsToWin: number;
 		completedAtBlock: number;
 		pathChosen?: 'might' | 'cunning' | 'spirit' | 'shadows' | 'endurance' | 'charm';
@@ -413,7 +414,7 @@
 										<div class="grid grid-cols-3 gap-4 text-sm mb-3">
 											<div>
 												<span class="text-secondary">Final HP:</span>
-												<span class="text-primary ml-1">{achievement.finalHp}</span>
+												<span class="text-primary ml-1">{achievement.finalHp}{achievement.maxHp ? `/${achievement.maxHp}` : ''}</span>
 											</div>
 											<div>
 												<span class="text-secondary">Rounds:</span>

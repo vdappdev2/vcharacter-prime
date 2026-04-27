@@ -112,7 +112,7 @@ export function buildCharacterContentMap(character: StoredCharacter): ContentMul
     wisdom: character.stats.wis,
     charisma: character.stats.cha,
   };
-  entries.push(buildDataDescriptor(VDXF_KEYS.labels.stats, statsData));
+  entries.push(buildDataDescriptor(VDXF_KEYS.labels.stats, statsData, 'application/json'));
 
   // Traits entry
   const traitsData = {
@@ -120,7 +120,7 @@ export function buildCharacterContentMap(character: StoredCharacter): ContentMul
     spirit: character.traits.spiritAnimal,
     sex: character.traits.sex,
   };
-  entries.push(buildDataDescriptor(VDXF_KEYS.labels.traits, traitsData));
+  entries.push(buildDataDescriptor(VDXF_KEYS.labels.traits, traitsData, 'application/json'));
 
   // Proof entry - minimal data needed for verification
   // Full commitmentResponse is large; store essential fields only
@@ -132,7 +132,7 @@ export function buildCharacterContentMap(character: StoredCharacter): ContentMul
     rollBlockHash: character.rollBlockHash,
     commitmentBlockHeight: character.commitment.signedBlockHeight,
   };
-  entries.push(buildDataDescriptor(VDXF_KEYS.labels.proof, proofData));
+  entries.push(buildDataDescriptor(VDXF_KEYS.labels.proof, proofData, 'application/json'));
 
   // Plan §9.2: outer key MUST be the FQN string for custom keys. Wallet rejects
   // raw i-address outer keys with "Cannot update with unknown key".
@@ -162,6 +162,7 @@ export interface AchievementProofData {
   // Summary stats
   difficulty: 'standard' | 'hard';
   finalHp: number;
+  maxHp?: number;
   roundsToWin: number;
   completedAtBlock: number;
 
@@ -186,7 +187,7 @@ export function buildAchievementContentMap(achievement: AchievementProofData): C
   const entries: DataDescriptorWrapper[] = [];
 
   // Single entry containing all achievement data
-  entries.push(buildDataDescriptor('.achievement', achievement));
+  entries.push(buildDataDescriptor('.achievement', achievement, 'application/json'));
 
   // Plan §9.2: outer key MUST be the FQN string for custom keys.
   return {
@@ -454,6 +455,7 @@ export interface ParsedAchievementData {
   playerActions?: ('attack' | 'defend' | 'special')[];
   difficulty?: 'standard' | 'hard';
   finalHp?: number;
+  maxHp?: number;
   roundsToWin?: number;
   completedAtBlock?: number;
   pathChosen?: 'might' | 'cunning' | 'spirit' | 'shadows' | 'endurance' | 'charm';
