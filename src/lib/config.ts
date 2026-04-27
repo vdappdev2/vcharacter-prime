@@ -5,6 +5,7 @@
  */
 
 import { PUBLIC_VERUS_NETWORK, PUBLIC_SWITCH_NETWORK_URL } from '$env/static/public';
+import packageJson from '../../package.json' with { type: 'json' };
 
 // Environment detection
 export const isDev = import.meta.env.DEV;
@@ -170,6 +171,6 @@ export const COMMITMENT_CONFIG = {
 export const APP_META = {
   name: 'vcharacter-prime',
   description: 'Provably fair character creation on Verus',
-  version: '0.4.2',
+  version: packageJson.version,
   network: CURRENT_NETWORK,
 };
