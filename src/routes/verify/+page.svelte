@@ -456,11 +456,11 @@
 												<div class="mt-2 space-y-1 text-xs">
 													<p>
 														<span class="text-secondary">Boss Seed:</span>
-														<span class="hash">{truncateHash(achievement.bossSceneSeed)}</span>
+														<span class="hash">{achievement.bossSceneSeed}</span>
 													</p>
 													<p>
 														<span class="text-secondary">Block Hash:</span>
-														<span class="hash">{truncateHash(achievement.bossSceneBlockHash || '')}</span>
+														<span class="hash">{achievement.bossSceneBlockHash || ''}</span>
 													</p>
 													<p>
 														<span class="text-secondary">Actions:</span>
@@ -482,15 +482,11 @@
 					<div class="mt-4 space-y-2 text-xs">
 						<p>
 							<span class="text-secondary">Client Seed:</span>
-							<span class="hash" title={verificationResult.character.verification.clientSeed}>
-								{truncateHash(verificationResult.character.verification.clientSeed)}
-							</span>
+							<span class="hash">{verificationResult.character.verification.clientSeed}</span>
 						</p>
 						<p>
 							<span class="text-secondary">Client Seed Hash:</span>
-							<span class="hash" title={verificationResult.character.verification.clientSeedHash}>
-								{truncateHash(verificationResult.character.verification.clientSeedHash)}
-							</span>
+							<span class="hash">{verificationResult.character.verification.clientSeedHash}</span>
 						</p>
 						<p>
 							<span class="text-secondary">Roll Block Height:</span>
@@ -498,9 +494,7 @@
 						</p>
 						<p>
 							<span class="text-secondary">Roll Block Hash:</span>
-							<span class="hash" title={verificationResult.character.verification.rollBlockHash}>
-								{truncateHash(verificationResult.character.verification.rollBlockHash)}
-							</span>
+							<span class="hash">{verificationResult.character.verification.rollBlockHash}</span>
 						</p>
 						<p>
 							<span class="text-secondary">Commitment Block Height:</span>
@@ -508,9 +502,7 @@
 						</p>
 						<p>
 							<span class="text-secondary">Identity Address:</span>
-							<span class="hash" title={verificationResult.character.identityAddress}>
-								{truncateHash(verificationResult.character.identityAddress || '')}
-							</span>
+							<span class="hash">{verificationResult.character.identityAddress || ''}</span>
 						</p>
 					</div>
 				</details>
