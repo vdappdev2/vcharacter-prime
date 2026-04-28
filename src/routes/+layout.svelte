@@ -20,12 +20,25 @@
 		{@render children()}
 	</div>
 
-	<!-- Footer with network switch -->
-	{#if SWITCH_NETWORK_URL}
-		<footer class="text-center py-4">
+	<!-- Footer: site nav + network switch -->
+	<footer class="text-center py-4 space-y-2">
+		<nav class="text-xs space-x-3">
+			<a href="/" class="network-switch-link">Create</a>
+			<span class="text-secondary opacity-50">·</span>
+			<a href="/play" class="network-switch-link">Play</a>
+			<span class="text-secondary opacity-50">·</span>
+			<a href="/verify" class="network-switch-link">Verify</a>
+			<span class="text-secondary opacity-50">·</span>
+			<a href="/how-it-works" class="network-switch-link">How it works</a>
+			<span class="text-secondary opacity-50">·</span>
+			<a href="/game-guide" class="network-switch-link">Game guide</a>
+			<span class="text-secondary opacity-50">·</span>
+			<a href="/verus-primer" class="network-switch-link">Verus Primer</a>
+		</nav>
+		{#if SWITCH_NETWORK_URL}
 			<a href={SWITCH_NETWORK_URL} class="network-switch-link">
 				{switchLabel} &rarr;
 			</a>
-		</footer>
-	{/if}
+		{/if}
+	</footer>
 </div>

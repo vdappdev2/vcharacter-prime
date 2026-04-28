@@ -408,6 +408,16 @@
 		const enemyAttackRoll = await deriveRoll('enemy_attack', 20);
 		const enemyDamageRoll = await deriveRoll('enemy_damage', 6);
 
+		// WIS-puzzle one-shot: derive extra rolls for the Primordial's free first attack
+		// (only on the first round of boss combat, only if the perceive check failed).
+		const isFirstBossRound = gameState.currentScene === 'boss' && gameState.combat.round === 1;
+		let enemyFreeAttackRoll: number | undefined;
+		let enemyFreeDamageRoll: number | undefined;
+		if (isFirstBossRound && gameState.bossEnemyGetsFreeFirstAttack) {
+			enemyFreeAttackRoll = await deriveRoll('enemy_free_attack', 20);
+			enemyFreeDamageRoll = await deriveRoll('enemy_free_damage', 6);
+		}
+
 		// Resolve combat round
 		const result = resolveCombatRound(
 			gameState,
@@ -415,13 +425,18 @@
 			playerAttackRoll,
 			playerDamageRoll,
 			enemyAttackRoll,
-			enemyDamageRoll
+			enemyDamageRoll,
+			enemyFreeAttackRoll,
+			enemyFreeDamageRoll,
 		);
 
-		// Update game state
+		// Update game state. Clear the WIS-puzzle one-shot flags after the first
+		// boss round consumes them (idempotent for non-boss combat / later rounds).
 		gameState = {
 			...gameState,
 			hp: result.playerHpAfter,
+			bossEnemySkipsFirstAttack: isFirstBossRound ? false : gameState.bossEnemySkipsFirstAttack,
+			bossEnemyGetsFreeFirstAttack: isFirstBossRound ? false : gameState.bossEnemyGetsFreeFirstAttack,
 			combat: {
 				...gameState.combat!,
 				enemy: {
@@ -508,6 +523,16 @@
 			if (check.failureEffect.type === 'damage') {
 				gameState = applyDamage(gameState, check.failureEffect.value);
 			}
+		}
+
+		// WIS perceive check — set the one-shot flag for boss round 1.
+		// Success: enemy skips its first attack. Failure: enemy attacks first.
+		if (check.id === 'perceive') {
+			gameState = {
+				...gameState,
+				bossEnemySkipsFirstAttack: success,
+				bossEnemyGetsFreeFirstAttack: !success,
+			};
 		}
 
 		const narrative = success
@@ -614,6 +639,17 @@
 			// Hard mode = chose power AND didn't pass CHA (so didn't also get wisdom).
 			const hardMode = gameState.bargainChoice === 'power' && !bargainBothBuffs;
 
+			// Reduce the puzzle outcomes (Scene 4 — three skill checks) to a compact
+			// {checkId: 'success'|'failure'} map. A verifier needs these to reconstruct
+			// the player's pre-boss state: INT success adds a +2 attack buff, DEX success
+			// heals 8 HP, INT/DEX failure deals damage, and the WIS perceive check
+			// changes round 1 of boss combat (success: enemy skips first attack;
+			// failure: enemy gets a free attack).
+			const puzzleResultsRecord: Record<string, 'success' | 'failure'> = {};
+			for (const r of puzzleResults) {
+				puzzleResultsRecord[r.check.id] = r.success ? 'success' : 'failure';
+			}
+
 			const achievement = {
 				characterName: gameState.character.name,
 				characterRollBlockHeight: selectedCharacter.rollBlockHeight,
@@ -630,6 +666,7 @@
 				bargainChoice: gameState.bargainChoice,
 				bargainBothBuffs,
 				spiritAbilityUsed: gameState.spiritAbilityUsed,
+				puzzleResults: puzzleResultsRecord,
 			};
 
 			const response = await fetch('/api/achievement/store', {

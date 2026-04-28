@@ -473,6 +473,11 @@ export function getPlayerDefense(character: StoredCharacter, debuffs: ActiveEffe
  *
  * Takes pre-derived dice values; the caller is responsible for sourcing
  * them from the deterministic dice system.
+ *
+ * On round 1 of boss combat, consumes the WIS-puzzle one-shot flags from
+ * state (bossEnemyGetsFreeFirstAttack / bossEnemySkipsFirstAttack). The caller
+ * must derive and pass enemyFreeAttackRoll / enemyFreeDamageRoll when the
+ * "free attack" flag is set; clearing both flags in state is the caller's job.
  */
 export function resolveCombatRound(
   state: GameState,
@@ -480,7 +485,9 @@ export function resolveCombatRound(
   playerAttackRoll: number,    // d20 result (1-20)
   playerDamageRoll: number,    // Weapon damage roll
   enemyAttackRoll: number,     // d20 result (1-20)
-  enemyDamageRoll: number      // Enemy damage roll
+  enemyDamageRoll: number,     // Enemy damage roll
+  enemyFreeAttackRoll?: number,
+  enemyFreeDamageRoll?: number,
 ): CombatRoundResult {
   const { character, combat, buffs, debuffs } = state;
   if (!combat) throw new Error('Not in combat');
@@ -491,6 +498,25 @@ export function resolveCombatRound(
   let narrative = '';
 
   const playerDefense = getPlayerDefense(character, debuffs, round);
+
+  // --- WIS-puzzle one-shot: free enemy attack before the player acts ---
+  // (Only on round 1 of boss combat. Failure of the WIS perceive check.)
+  const isFirstBossRound = state.currentScene === 'boss' && round === 1;
+  if (
+    isFirstBossRound
+    && state.bossEnemyGetsFreeFirstAttack
+    && enemyFreeAttackRoll !== undefined
+    && enemyFreeDamageRoll !== undefined
+  ) {
+    const freeAttackTotal = enemyFreeAttackRoll + enemy.attackBonus;
+    if (freeAttackTotal >= playerDefense) {
+      const freeDamage = calculateEnemyDamage(enemy, character);
+      enemyDamage += freeDamage;
+      narrative += `Ambushed! The ${enemy.name} strikes before you can react (${enemyFreeAttackRoll}+${enemy.attackBonus}=${freeAttackTotal} vs ${playerDefense}) and lands ${freeDamage} damage. `;
+    } else {
+      narrative += `The ${enemy.name} lunges first, but its opening strike misses (${enemyFreeAttackRoll}+${enemy.attackBonus}=${freeAttackTotal} vs ${playerDefense}). `;
+    }
+  }
 
   // --- Player Turn ---
   switch (playerAction) {
@@ -541,8 +567,12 @@ export function resolveCombatRound(
   const enemySkipsTurn = combat.rounds.length > 0 &&
     combat.rounds[combat.rounds.length - 1]?.narrative.includes('stunned');
   const enemyAutoMiss = buffs.some(b => b.description.includes('Spider'));
+  // WIS-puzzle one-shot: success on the perceive check skips the boss's first attack.
+  const enemySkipsForeseen = isFirstBossRound && !!state.bossEnemySkipsFirstAttack;
 
-  if (enemySkipsTurn) {
+  if (enemySkipsForeseen) {
+    narrative += `Foreseen — the ${enemy.name}'s opening attack passes through empty air. `;
+  } else if (enemySkipsTurn) {
     narrative += `The ${enemy.name} is still recovering from your roar. `;
   } else if (enemyAutoMiss) {
     narrative += `The ${enemy.name} strikes, but spectral webs deflect the blow! `;

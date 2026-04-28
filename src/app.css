@@ -203,3 +203,128 @@ h1, h2, h3, .display-font {
 .network-switch-link:hover {
   color: var(--color-accent);
 }
+
+/* Long-form prose styling for /how-it-works, /game-guide, /verus-primer */
+.prose-doc {
+  color: var(--color-text-primary);
+  line-height: 1.7;
+}
+
+.prose-doc h1 {
+  font-family: var(--font-display);
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: var(--color-accent);
+  margin-bottom: 1rem;
+  line-height: 1.2;
+}
+
+.prose-doc h2 {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0.5rem;
+}
+
+.prose-doc h3 {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.prose-doc p {
+  margin-bottom: 1rem;
+}
+
+.prose-doc ul,
+.prose-doc ol {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.prose-doc ul { list-style: disc; }
+.prose-doc ol { list-style: decimal; }
+
+.prose-doc li {
+  margin-bottom: 0.5rem;
+}
+
+.prose-doc strong {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.prose-doc em {
+  color: var(--color-text-primary);
+  font-style: italic;
+}
+
+.prose-doc a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.prose-doc a:hover {
+  filter: brightness(1.2);
+}
+
+.prose-doc code {
+  background-color: var(--color-surface-elevated);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+  color: var(--color-accent);
+}
+
+.prose-doc pre {
+  background-color: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 1.25rem 0;
+  font-size: 0.875rem;
+}
+
+.prose-doc pre code {
+  background: transparent;
+  padding: 0;
+  color: var(--color-text-primary);
+  font-size: inherit;
+}
+
+.prose-doc table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.25rem 0;
+  font-size: 0.9375rem;
+}
+
+.prose-doc th,
+.prose-doc td {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.prose-doc th {
+  background-color: var(--color-surface-elevated);
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+
+.prose-doc hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-border), transparent);
+  margin: 2.5rem 0;
+}

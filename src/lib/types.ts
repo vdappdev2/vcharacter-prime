@@ -80,7 +80,7 @@ export interface StatRoll {
   dice: [number, number, number, number];
   /** Sum of all four dice (4-24) */
   total: number;
-  /** Modifier calculated from total: floor((stat - 14) / 2) */
+  /** Modifier calculated from total: floor((total - 13) / 2) */
   modifier: number;
 }
 

@@ -171,6 +171,15 @@ export interface AchievementProofData {
   bargainChoice?: 'power' | 'wisdom';
   bargainBothBuffs?: boolean;
   spiritAbilityUsed?: boolean;
+
+  // Scene 4 puzzle outcomes — required to reconstruct the player's pre-boss
+  // state (INT/DEX HP and buff deltas, WIS round-1 modification) when
+  // verifying the boss-fight replay.
+  puzzleResults?: {
+    decipher?: 'success' | 'failure';
+    perceive?: 'success' | 'failure';
+    manipulate?: 'success' | 'failure';
+  };
 }
 
 /**
@@ -462,6 +471,11 @@ export interface ParsedAchievementData {
   bargainChoice?: 'power' | 'wisdom';
   bargainBothBuffs?: boolean;
   spiritAbilityUsed?: boolean;
+  puzzleResults?: {
+    decipher?: 'success' | 'failure';
+    perceive?: 'success' | 'failure';
+    manipulate?: 'success' | 'failure';
+  };
 }
 
 /**

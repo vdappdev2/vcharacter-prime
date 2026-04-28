@@ -240,6 +240,15 @@ export interface GameState {
   /** Active debuffs */
   debuffs: ActiveEffect[];
 
+  /**
+   * One-shot flags from the WIS puzzle outcome (Scene 4 — Sense True Path).
+   * Consumed in the first round of boss combat.
+   * Success: enemy skips its round-1 attack. Failure: enemy gets a free attack
+   * before the player's round-1 action.
+   */
+  bossEnemySkipsFirstAttack?: boolean;
+  bossEnemyGetsFreeFirstAttack?: boolean;
+
   /** Path chosen in Scene 2 */
   pathChosen?: 'might' | 'cunning' | 'spirit' | 'shadows' | 'endurance' | 'charm';
 

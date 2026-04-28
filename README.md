@@ -38,9 +38,14 @@ Provably fair dice-based character creation with on-chain storage using Verus VD
 
 ## Pages
 
-- `/` - Character creation
-- `/play` - The Primordial Trial game
-- `/verify` - Verify characters and view achievements
+Live at [prime.vcharacter.xyz](https://prime.vcharacter.xyz):
+
+- [Create](https://prime.vcharacter.xyz/) — Character creation
+- [Play](https://prime.vcharacter.xyz/play) — The Primordial Trial game
+- [Verify](https://prime.vcharacter.xyz/verify) — Verify characters and view achievements
+- [How it works](https://prime.vcharacter.xyz/how-it-works) — Technical reference for the creation flow, on-chain data, and verification
+- [Game guide](https://prime.vcharacter.xyz/game-guide) — Stat math, scenes, spirit animals, and combat mechanics
+- [Verus Primer](https://prime.vcharacter.xyz/verus-primer) — The three Verus primitives behind vcharacter-prime: Proof of Power, VerusID, and ContentMultiMap with VDXF keys
 
 ## Network
 

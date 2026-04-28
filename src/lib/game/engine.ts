@@ -42,6 +42,8 @@ export function createGameState(character: StoredCharacter): GameState {
     debuffs: [],
     choices: [],
     rolls: [],
+    bossEnemySkipsFirstAttack: false,
+    bossEnemyGetsFreeFirstAttack: false,
     startedAt: Date.now(),
   };
 }
@@ -316,18 +318,18 @@ export function getPuzzleChecks(): SkillCheck[] {
       description: 'Sense the true path through the shifting corridors',
       stat: 'wis',
       dc: 14,
-      successDesc: 'You find a shortcut, arriving refreshed at the final chamber.',
+      successDesc: 'You sense the Primordial readying its strike and slip past its opening attack.',
       failureDesc: 'You stumble into an ambush position. The Primordial will strike first.',
       successEffect: {
         type: 'buff',
         value: 1,
-        description: 'Shortcut: Skip first round of boss combat',
+        description: 'Foreseen: Primordial skips its first attack',
         duration: 99,
       },
       failureEffect: {
         type: 'debuff',
         value: 0,
-        description: 'Ambushed: Primordial gets free attack',
+        description: 'Ambushed: Primordial gets a free attack',
         duration: 1,
       },
     },
