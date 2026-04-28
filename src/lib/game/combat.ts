@@ -171,31 +171,36 @@ export function createPrimordial(hard: boolean): Enemy {
 
 /**
  * Get element combat bonus
+ *
+ * Element perks not handled here (each lives where its trigger lives):
+ *   - Fire:  +3 damage on the player's first successful attack each combat
+ *            (resolveCombatRound, gated on combat.firstHitDealt)
+ *   - Air:   +4 to the player's round-1 attack roll, every combat
+ *            (getPlayerAttackMod, gated on combatRound === 1)
+ *   - Water: +3 to the WIS perceive check in Scene 4
+ *            (attemptPuzzle in src/routes/play/+page.svelte)
+ *   - Wood:  +2 HP healed at the end of each combat
+ *            (applyWoodRegeneration, gated on the leaving-combat-scene check)
  */
 export function getElementBonus(
   playerElement: Element,
-  context: 'attack' | 'defense' | 'damage' | 'initiative',
+  context: 'attack' | 'defense' | 'damage',
   enemyElement?: Element
 ): number {
+  // enemyElement reserved for future matchup-based perks; not used today.
+  void enemyElement;
   switch (playerElement) {
-    case 'Fire':
-      if (context === 'damage' && enemyElement === 'Wood') return 2;
-      return 0;
-    case 'Water':
-      // Water has perception bonus, not combat
-      return 0;
     case 'Earth':
       if (context === 'defense') return 2;
-      return 0;
-    case 'Air':
-      if (context === 'initiative') return 100; // Always first
-      return 0;
-    case 'Wood':
-      // Wood has regeneration, handled separately
       return 0;
     case 'Metal':
       if (context === 'damage') return 1;
       return 0;
+    // Fire / Water / Air / Wood perks fire elsewhere — see doc comment above.
+    case 'Fire':
+    case 'Water':
+    case 'Air':
+    case 'Wood':
     default:
       return 0;
   }
@@ -372,6 +377,7 @@ export function useSpiritAbility(spirit: SpiritAnimal, state: GameState): Spirit
 /**
  * Calculate player's attack modifier
  * STR always applies. From round 2+, INT bonus kicks in (exploit weakness — pattern recognition).
+ * Air element adds +4 to the round-1 attack roll, every combat.
  */
 export function getPlayerAttackMod(character: StoredCharacter, buffs: ActiveEffect[], combatRound: number = 1): number {
   let mod = character.stats.str.modifier; // Melee uses STR
@@ -379,6 +385,12 @@ export function getPlayerAttackMod(character: StoredCharacter, buffs: ActiveEffe
   // INT: Exploit Weakness — from round 2+ the character reads enemy patterns
   if (combatRound >= 2) {
     mod += Math.max(0, character.stats.int.modifier);
+  }
+
+  // Air element: +4 round-1 attack ("first strike" — replaces the dead
+  // initiative-100 perk that never triggered).
+  if (combatRound === 1 && character.traits.element === 'Air') {
+    mod += 4;
   }
 
   // Add buff bonuses
@@ -563,7 +575,16 @@ export function resolveCombatRound(
 
       if (hit) {
         playerDamage = calculatePlayerDamage(character, playerDamageRoll, buffs, enemy.element);
+        // Fire element: +3 bonus damage on the first successful attack each combat.
+        const isFireFirstHit =
+          character.traits.element === 'Fire' && !combat.firstHitDealt;
+        if (isFireFirstHit) {
+          playerDamage += 3;
+        }
         narrative += `You strike the ${enemy.name}! (${playerAttackRoll}+${modBreakdown}=${attackTotal} vs ${enemy.defense}) `;
+        if (isFireFirstHit) {
+          narrative += `Searing flame opens the wound for +3 bonus damage. `;
+        }
         narrative += `You deal ${playerDamage} damage. `;
       } else {
         narrative += `Your attack misses the ${enemy.name}. (${playerAttackRoll}+${modBreakdown}=${attackTotal} vs ${enemy.defense}) `;
@@ -630,10 +651,18 @@ export function resolveCombatRound(
   const newEnemyHp = Math.max(0, enemy.hp - playerDamage);
   const newPlayerHp = Math.max(0, state.hp - enemyDamage);
 
-  // Check for end conditions
-  if (newEnemyHp <= 0) {
+  // Check for end conditions. Mutual-KO defaults to defeat — except for Wood
+  // characters, whose end-of-combat regen pulls them back ("last gasp").
+  // Outcome resolution is duplicated in getCombatOutcome below; both must agree.
+  const playerDown = newPlayerHp <= 0;
+  const enemyDown = newEnemyHp <= 0;
+  const woodLastGasp = playerDown && enemyDown && character.traits.element === 'Wood';
+
+  if (enemyDown && !playerDown) {
     narrative += `The ${enemy.name} falls! Victory is yours!`;
-  } else if (newPlayerHp <= 0) {
+  } else if (woodLastGasp) {
+    narrative += `The ${enemy.name} falls and you collapse beside it — but Wood spirit stirs your life back. Victory through sacrifice.`;
+  } else if (playerDown) {
     narrative += 'Darkness takes you. The trial has ended in defeat.';
   }
 
@@ -663,23 +692,51 @@ export function isCombatOver(state: GameState): boolean {
 
 /**
  * Get combat outcome
+ *
+ * Mutual KO (both at 0) defaults to defeat — the player's hard-floor death
+ * check wins the tie. Wood characters get a "last gasp" exception: their
+ * end-of-combat regen pulls them above 0, so a mutual KO becomes victory
+ * (the regen lands in advanceScene → applyWoodRegeneration). Mirror this
+ * in resolveCombatRound's narrative.
  */
 export function getCombatOutcome(state: GameState): 'victory' | 'defeat' | 'ongoing' {
   if (!state.combat) return 'ongoing';
-  if (state.hp <= 0) return 'defeat';
-  if (state.combat.enemy.hp <= 0) return 'victory';
+
+  const playerDown = state.hp <= 0;
+  const enemyDown = state.combat.enemy.hp <= 0;
+
+  if (
+    playerDown
+    && enemyDown
+    && state.character.traits.element === 'Wood'
+    && state.hp + WOOD_REGEN_AMOUNT > 0
+  ) {
+    return 'victory';
+  }
+
+  if (playerDown) return 'defeat';
+  if (enemyDown) return 'victory';
   return 'ongoing';
 }
 
 /**
- * Apply Wood regeneration at end of scene
+ * Wood element heal amount, applied at the end of each combat scene.
+ * Also drives the "last gasp" mutual-KO survival check in getCombatOutcome.
+ */
+export const WOOD_REGEN_AMOUNT = 2;
+
+/**
+ * Apply Wood regeneration at end of combat
+ *
+ * Wood characters heal +2 HP at the end of each combat scene (guardian or
+ * boss), capped at maxHp. Called from advanceScene before currentScene is
+ * updated, so state.currentScene is the scene we're leaving.
  */
 export function applyWoodRegeneration(state: GameState): number {
-  if (state.character.traits.element === 'Wood') {
-    const heal = 1;
-    return Math.min(state.hp + heal, state.maxHp);
-  }
-  return state.hp;
+  if (state.character.traits.element !== 'Wood') return state.hp;
+  // Only fire when leaving a combat scene.
+  if (state.currentScene !== 'guardian' && state.currentScene !== 'boss') return state.hp;
+  return Math.min(state.hp + WOOD_REGEN_AMOUNT, state.maxHp);
 }
 
 /**

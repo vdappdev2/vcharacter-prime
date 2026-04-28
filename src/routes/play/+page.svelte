@@ -432,6 +432,9 @@
 
 		// Update game state. Clear the WIS-puzzle one-shot flags after the first
 		// boss round consumes them (idempotent for non-boss combat / later rounds).
+		// Mark Fire's firstHitDealt as soon as the player lands any damage —
+		// non-Fire characters pay no cost, the flag is just inert for them.
+		const landedHit = result.playerDamage > 0;
 		gameState = {
 			...gameState,
 			hp: result.playerHpAfter,
@@ -445,6 +448,7 @@
 				},
 				round: gameState.combat!.round + 1,
 				rounds: [...gameState.combat!.rounds, result],
+				firstHitDealt: gameState.combat!.firstHitDealt || landedHit,
 			},
 		};
 
@@ -504,7 +508,12 @@
 		// Derive deterministic dice roll
 		const rollResult = await deriveRoll(`puzzle_${check.id}`, 20);
 		const statMod = gameState.character.stats[check.stat].modifier;
-		const total = rollResult + statMod;
+		// Water element: +3 to the WIS perceive check (Scene 4).
+		const waterPerceiveBonus =
+			check.id === 'perceive' && gameState.character.traits.element === 'Water'
+				? 3
+				: 0;
+		const total = rollResult + statMod + waterPerceiveBonus;
 		const success = total >= check.dc;
 
 		// Apply effects
@@ -535,9 +544,12 @@
 			};
 		}
 
+		const breakdown = waterPerceiveBonus > 0
+			? `${rollResult} + ${statMod} + ${waterPerceiveBonus}Water = ${total}`
+			: `${rollResult} + ${statMod} = ${total}`;
 		const narrative = success
-			? `Rolled ${rollResult} + ${statMod} = ${total} vs DC ${check.dc}. ${check.successDesc}`
-			: `Rolled ${rollResult} + ${statMod} = ${total} vs DC ${check.dc}. ${check.failureDesc}`;
+			? `Rolled ${breakdown} vs DC ${check.dc}. ${check.successDesc}`
+			: `Rolled ${breakdown} vs DC ${check.dc}. ${check.failureDesc}`;
 
 		puzzleResults = [...puzzleResults, { check, success, narrative }];
 		currentPuzzleIndex++;

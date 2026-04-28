@@ -150,11 +150,11 @@
 			<tr><th>Element</th><th>Effect</th></tr>
 		</thead>
 		<tbody>
-			<tr><td><strong>Fire</strong></td><td>+2 damage vs Wood enemies</td></tr>
-			<tr><td><strong>Water</strong></td><td>Perception bonus (narrative advantage)</td></tr>
+			<tr><td><strong>Fire</strong></td><td>+3 damage on your first successful attack each combat</td></tr>
+			<tr><td><strong>Water</strong></td><td>+3 to the WIS perception check (Scene 4)</td></tr>
 			<tr><td><strong>Earth</strong></td><td>+2 defense (always active)</td></tr>
-			<tr><td><strong>Air</strong></td><td>Always acts first in combat</td></tr>
-			<tr><td><strong>Wood</strong></td><td>Regenerates 1 HP at the end of each scene</td></tr>
+			<tr><td><strong>Air</strong></td><td>+4 to your round-1 attack roll, every combat</td></tr>
+			<tr><td><strong>Wood</strong></td><td>Heals 2 HP at the end of each combat. <em>Last gasp:</em> if you and the enemy reach 0 HP in the same round, the regen pulls you back — victory through sacrifice.</td></tr>
 			<tr><td><strong>Metal</strong></td><td>+1 damage on all attacks</td></tr>
 		</tbody>
 	</table>

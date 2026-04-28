@@ -4,12 +4,15 @@ import {
   createPrimordial,
   getPlayerAttackMod,
   getPlayerDefense,
+  getCombatOutcome,
+  applyWoodRegeneration,
 } from './combat';
-import type { GameState, ActiveEffect } from './types';
-import type { StoredCharacter } from '../types';
+import type { GameState, ActiveEffect, Enemy } from './types';
+import type { StoredCharacter, Element } from '../types';
 
 function mkChar(overrides: Partial<{
   str: number; dex: number; con: number; int: number; wis: number; cha: number;
+  element: Element;
 }> = {}): StoredCharacter {
   const stat = (mod: number) => ({ dice: [3, 4, 4, 4] as [number, number, number, number], total: 13 + mod * 2, modifier: mod });
   return {
@@ -22,7 +25,7 @@ function mkChar(overrides: Partial<{
       wis: stat(overrides.wis ?? 0),
       cha: stat(overrides.cha ?? 0),
     },
-    traits: { element: 'Fire', spiritAnimal: 'Wolf', sex: 'Male' },
+    traits: { element: overrides.element ?? 'Fire', spiritAnimal: 'Wolf', sex: 'Male' },
     verification: { block_height: 0, block_hash: '0'.repeat(64), client_seed: '0'.repeat(64), timestamp: 0 },
     userIdentity: '',
     userFriendlyName: '',
@@ -33,7 +36,7 @@ function mkChar(overrides: Partial<{
 }
 
 function mkBossState(overrides: Partial<GameState> = {}): GameState {
-  const character = mkChar();
+  const character = overrides.character ?? mkChar();
   const enemy = createPrimordial(false);
   return {
     character,
@@ -188,5 +191,142 @@ describe('getPlayerDefense — buff plumbing (P4)', () => {
       type: 'buff', value: 1, scenesRemaining: 99,
     };
     expect(getPlayerDefense(character, [might], [], 1)).toBe(baseline);
+  });
+});
+
+describe('Element perks (P6)', () => {
+  // Air: +4 to round-1 attack roll, every combat (replaces dead initiative-100)
+  describe('Air: +4 round-1 attack', () => {
+    it('adds +4 on round 1 only', () => {
+      const air = mkChar({ str: 2, element: 'Air' });
+      expect(getPlayerAttackMod(air, [], 1)).toBe(2 + 4); // STR + Air r1
+      expect(getPlayerAttackMod(air, [], 2)).toBe(2);     // STR only on r2 (INT is 0)
+    });
+
+    it('does not affect non-Air characters', () => {
+      const fire = mkChar({ str: 2, element: 'Fire' });
+      expect(getPlayerAttackMod(fire, [], 1)).toBe(2);
+    });
+  });
+
+  // Fire: +3 damage on first successful attack each combat
+  describe('Fire: +3 first-hit damage', () => {
+    it('adds +3 on the first successful attack of a combat', () => {
+      const character = mkChar({ str: 1, element: 'Fire' });
+      const state = mkBossState({ character });
+      const result = resolveCombatRound(state, 'attack', 20, 4, 1, 1);
+      // calculatePlayerDamage = 4 (roll) + 1 (STR) + 0 (no Metal) = 5; +3 Fire = 8
+      expect(result.playerDamage).toBe(8);
+      expect(result.narrative).toContain('Searing flame');
+    });
+
+    it('does not add +3 once firstHitDealt is set', () => {
+      const character = mkChar({ str: 1, element: 'Fire' });
+      const state = mkBossState({
+        character,
+        combat: { enemy: createPrimordial(false), round: 2, playerDefending: false, rounds: [], firstHitDealt: true },
+      });
+      const result = resolveCombatRound(state, 'attack', 20, 4, 1, 1);
+      expect(result.playerDamage).toBe(5); // No +3 — first hit already consumed
+      expect(result.narrative).not.toContain('Searing flame');
+    });
+
+    it('does not add +3 for non-Fire characters', () => {
+      const character = mkChar({ str: 1, element: 'Earth' });
+      const state = mkBossState({ character });
+      const result = resolveCombatRound(state, 'attack', 20, 4, 1, 1);
+      expect(result.playerDamage).toBe(5);
+    });
+  });
+
+  // Wood: +2 HP at end of each combat (replaces +1 per scene)
+  describe('Wood: +2 HP end-of-combat regen', () => {
+    it('heals +2 when leaving the guardian scene', () => {
+      const character = mkChar({ element: 'Wood' });
+      const state = mkBossState({ character, currentScene: 'guardian', hp: 10, maxHp: 25 });
+      expect(applyWoodRegeneration(state)).toBe(12);
+    });
+
+    it('heals +2 when leaving the boss scene', () => {
+      const character = mkChar({ element: 'Wood' });
+      const state = mkBossState({ character, currentScene: 'boss', hp: 10, maxHp: 25 });
+      expect(applyWoodRegeneration(state)).toBe(12);
+    });
+
+    it('does not heal when leaving non-combat scenes', () => {
+      const character = mkChar({ element: 'Wood' });
+      const state = mkBossState({ character, currentScene: 'puzzles', hp: 10, maxHp: 25 });
+      expect(applyWoodRegeneration(state)).toBe(10);
+    });
+
+    it('caps at maxHp', () => {
+      const character = mkChar({ element: 'Wood' });
+      const state = mkBossState({ character, currentScene: 'boss', hp: 24, maxHp: 25 });
+      expect(applyWoodRegeneration(state)).toBe(25);
+    });
+
+    it('does not heal non-Wood characters', () => {
+      const character = mkChar({ element: 'Earth' });
+      const state = mkBossState({ character, currentScene: 'boss', hp: 10, maxHp: 25 });
+      expect(applyWoodRegeneration(state)).toBe(10);
+    });
+  });
+});
+
+describe('Mutual KO + Wood last gasp (b2)', () => {
+  function mkPostMutualKO(element: Element): GameState {
+    // Caller has already received result.playerHpAfter=0 / enemyHpAfter=0
+    // and updated state. getCombatOutcome reads this state.
+    const character = mkChar({ element });
+    const enemy: Enemy = { ...createPrimordial(false), hp: 0 };
+    return mkBossState({ character, hp: 0, combat: { enemy, round: 5, playerDefending: false, rounds: [] } });
+  }
+
+  it('non-Wood mutual KO returns defeat', () => {
+    expect(getCombatOutcome(mkPostMutualKO('Fire'))).toBe('defeat');
+    expect(getCombatOutcome(mkPostMutualKO('Earth'))).toBe('defeat');
+    expect(getCombatOutcome(mkPostMutualKO('Metal'))).toBe('defeat');
+  });
+
+  it('Wood mutual KO returns victory (last gasp)', () => {
+    expect(getCombatOutcome(mkPostMutualKO('Wood'))).toBe('victory');
+  });
+
+  it('player-only down still returns defeat for Wood', () => {
+    // Wood character at 0 HP but enemy still alive — no last gasp save.
+    const character = mkChar({ element: 'Wood' });
+    const state = mkBossState({ character, hp: 0 });
+    expect(getCombatOutcome(state)).toBe('defeat');
+  });
+
+  it('mutual KO narrative for Wood includes "Wood spirit"', () => {
+    // CON 0 → no damage reduction; primordial deals 5 base, drops player from 5 → 0.
+    // STR 0 → player attack damage = 4 (roll) + 0 (STR) = 4; drops enemy from 4 → 0.
+    const character = mkChar({ str: 0, con: 0, element: 'Wood' });
+    const enemy: Enemy = { ...createPrimordial(false), hp: 4 };
+    const state = mkBossState({
+      character,
+      hp: 5,
+      combat: { enemy, round: 3, playerDefending: false, rounds: [] },
+    });
+    const result = resolveCombatRound(state, 'attack', 20, 4, 20, 6);
+    expect(result.playerHpAfter).toBe(0);
+    expect(result.enemyHpAfter).toBe(0);
+    expect(result.narrative).toContain('Wood spirit');
+  });
+
+  it('mutual KO narrative for non-Wood is defeat-flavored', () => {
+    // Fire's first-hit +3 stacks: 4 (roll) + 0 (STR) + 3 (Fire) = 7 vs 4 hp → 0.
+    const character = mkChar({ str: 0, con: 0, element: 'Fire' });
+    const enemy: Enemy = { ...createPrimordial(false), hp: 4 };
+    const state = mkBossState({
+      character,
+      hp: 5,
+      combat: { enemy, round: 3, playerDefending: false, rounds: [] },
+    });
+    const result = resolveCombatRound(state, 'attack', 20, 4, 20, 6);
+    expect(result.playerHpAfter).toBe(0);
+    expect(result.enemyHpAfter).toBe(0);
+    expect(result.narrative).toContain('Darkness');
   });
 });

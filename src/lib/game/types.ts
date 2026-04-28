@@ -267,6 +267,13 @@ export interface GameState {
     round: number;
     playerDefending: boolean;
     rounds: CombatRoundResult[];
+    /**
+     * Whether the player has already landed a successful attack in this
+     * combat. Used by the Fire element perk: the first successful attack
+     * each combat deals +3 bonus damage. Caller (the play page) sets this
+     * to true after a round where playerDamage > 0.
+     */
+    firstHitDealt?: boolean;
   };
 
   /** Game outcome */
