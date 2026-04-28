@@ -3,6 +3,7 @@ import {
   resolveCombatRound,
   createPrimordial,
   getPlayerAttackMod,
+  getPlayerDefense,
 } from './combat';
 import type { GameState, ActiveEffect } from './types';
 import type { StoredCharacter } from '../types';
@@ -131,5 +132,61 @@ describe('resolveCombatRound — baseline (no perceive flags)', () => {
     const state = mkBossState();
     const result = resolveCombatRound(state, 'attack', 20, 6, 20, 6);
     expect(result.enemyAction).toBe('attack');
+  });
+});
+
+describe('getPlayerDefense — buff plumbing (P4)', () => {
+  // Regression seal: previously getPlayerDefense ignored buffs entirely, so
+  // both Path of Shadows ("+1 defense this session") and the Gift of Wisdom
+  // bargain ("+2 defense vs Primordial") were silently inert. Both buffs are
+  // added to state.buffs in engine.ts but the defense calc never read them.
+
+  it('applies Path of Shadows: +1 defense buff', () => {
+    const character = mkChar({ dex: 1 });
+    const baseline = getPlayerDefense(character, [], [], 1); // 10 + 1 = 11
+    const shadows: ActiveEffect = {
+      description: 'Shadow Walker: +1 defense this session',
+      type: 'buff',
+      value: 1,
+      scenesRemaining: 99,
+    };
+    expect(getPlayerDefense(character, [shadows], [], 1)).toBe(baseline + 1);
+  });
+
+  it('applies Gift of Wisdom: +2 defense buff', () => {
+    const character = mkChar({ dex: 1 });
+    const baseline = getPlayerDefense(character, [], [], 1);
+    const wisdom: ActiveEffect = {
+      description: 'Spirit Wisdom: +2 defense vs Primordial',
+      type: 'buff',
+      value: 2,
+      scenesRemaining: 99,
+    };
+    expect(getPlayerDefense(character, [wisdom], [], 1)).toBe(baseline + 2);
+  });
+
+  it('stacks Shadows + Wisdom buffs', () => {
+    const character = mkChar({ dex: 1 });
+    const baseline = getPlayerDefense(character, [], [], 1);
+    const shadows: ActiveEffect = {
+      description: 'Shadow Walker: +1 defense this session',
+      type: 'buff', value: 1, scenesRemaining: 99,
+    };
+    const wisdom: ActiveEffect = {
+      description: 'Spirit Wisdom: +2 defense vs Primordial',
+      type: 'buff', value: 2, scenesRemaining: 99,
+    };
+    expect(getPlayerDefense(character, [shadows, wisdom], [], 1)).toBe(baseline + 3);
+  });
+
+  it('does not match unrelated buff descriptions', () => {
+    const character = mkChar({ dex: 1 });
+    const baseline = getPlayerDefense(character, [], [], 1);
+    // Path of Might "+1 damage this session" must not bleed into defense.
+    const might: ActiveEffect = {
+      description: 'Forceful Entry: +1 damage this session',
+      type: 'buff', value: 1, scenesRemaining: 99,
+    };
+    expect(getPlayerDefense(character, [might], [], 1)).toBe(baseline);
   });
 });

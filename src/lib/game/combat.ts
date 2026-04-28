@@ -439,8 +439,17 @@ export function calculateEnemyDamage(
 /**
  * Get player's defense value
  * DEX always applies. From round 2+, WIS bonus kicks in (insightful defense — reading attack patterns).
+ * Buffs whose description contains "defense", "Shadow", or "Wisdom" stack
+ * (mirrors the substring-match pattern used by getPlayerAttackMod and
+ * calculatePlayerDamage so Path of Shadows and the Gift of Wisdom bargain
+ * actually take effect).
  */
-export function getPlayerDefense(character: StoredCharacter, debuffs: ActiveEffect[], combatRound: number = 1): number {
+export function getPlayerDefense(
+  character: StoredCharacter,
+  buffs: ActiveEffect[],
+  debuffs: ActiveEffect[],
+  combatRound: number = 1,
+): number {
   let defense = BASE_DEFENSE + character.stats.dex.modifier;
 
   // WIS: Insightful Defense — from round 2+ the character reads enemy attack patterns
@@ -450,6 +459,17 @@ export function getPlayerDefense(character: StoredCharacter, debuffs: ActiveEffe
 
   // Element bonus
   defense += getElementBonus(character.traits.element, 'defense');
+
+  // Buff bonuses (Path of Shadows, Gift of Wisdom from Spirit Bargain)
+  for (const buff of buffs) {
+    if (
+      buff.description.includes('defense')
+      || buff.description.includes('Shadow')
+      || buff.description.includes('Wisdom')
+    ) {
+      defense += buff.value;
+    }
+  }
 
   // Element penalties
   if (character.traits.element === 'Metal') {
@@ -500,7 +520,7 @@ export function resolveCombatRound(
   let enemyDamage = 0;
   let narrative = '';
 
-  const playerDefense = getPlayerDefense(character, debuffs, round);
+  const playerDefense = getPlayerDefense(character, buffs, debuffs, round);
 
   // --- WIS-puzzle one-shot: free enemy attack before the player acts ---
   // (Only on round 1 of boss combat. Failure of the WIS perceive check.)
