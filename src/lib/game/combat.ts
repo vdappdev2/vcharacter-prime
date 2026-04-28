@@ -475,9 +475,12 @@ export function getPlayerDefense(character: StoredCharacter, debuffs: ActiveEffe
  * them from the deterministic dice system.
  *
  * On round 1 of boss combat, consumes the WIS-puzzle one-shot flags from
- * state (bossEnemyGetsFreeFirstAttack / bossEnemySkipsFirstAttack). The caller
- * must derive and pass enemyFreeAttackRoll / enemyFreeDamageRoll when the
- * "free attack" flag is set; clearing both flags in state is the caller's job.
+ * state (bossEnemyGetsFreeFirstAttack / bossEnemySkipsFirstAttack):
+ *   - bossEnemyGetsFreeFirstAttack: enemy attacks once, before the player.
+ *     The normal enemy turn is suppressed (one swing total, not two).
+ *     Caller must pass enemyFreeAttackRoll / enemyFreeDamageRoll.
+ *   - bossEnemySkipsFirstAttack: enemy turn is skipped entirely.
+ * Clearing both flags in state is the caller's job.
  */
 export function resolveCombatRound(
   state: GameState,
@@ -501,17 +504,21 @@ export function resolveCombatRound(
 
   // --- WIS-puzzle one-shot: free enemy attack before the player acts ---
   // (Only on round 1 of boss combat. Failure of the WIS perceive check.)
+  // When this fires, the regular enemy turn is suppressed below — the boss
+  // gets one swing, not two.
   const isFirstBossRound = state.currentScene === 'boss' && round === 1;
-  if (
+  const runFreeAttack =
     isFirstBossRound
-    && state.bossEnemyGetsFreeFirstAttack
+    && state.bossEnemyGetsFreeFirstAttack === true
     && enemyFreeAttackRoll !== undefined
-    && enemyFreeDamageRoll !== undefined
-  ) {
-    const freeAttackTotal = enemyFreeAttackRoll + enemy.attackBonus;
+    && enemyFreeDamageRoll !== undefined;
+  let freeAttackHit = false;
+  if (runFreeAttack) {
+    const freeAttackTotal = enemyFreeAttackRoll! + enemy.attackBonus;
     if (freeAttackTotal >= playerDefense) {
       const freeDamage = calculateEnemyDamage(enemy, character);
       enemyDamage += freeDamage;
+      freeAttackHit = true;
       narrative += `Ambushed! The ${enemy.name} strikes before you can react (${enemyFreeAttackRoll}+${enemy.attackBonus}=${freeAttackTotal} vs ${playerDefense}) and lands ${freeDamage} damage. `;
     } else {
       narrative += `The ${enemy.name} lunges first, but its opening strike misses (${enemyFreeAttackRoll}+${enemy.attackBonus}=${freeAttackTotal} vs ${playerDefense}). `;
@@ -570,13 +577,20 @@ export function resolveCombatRound(
   // WIS-puzzle one-shot: success on the perceive check skips the boss's first attack.
   const enemySkipsForeseen = isFirstBossRound && !!state.bossEnemySkipsFirstAttack;
 
-  if (enemySkipsForeseen) {
+  let enemyActionLabel: string;
+  if (runFreeAttack) {
+    // The free attack above was the enemy's swing for this round; suppress
+    // the regular enemy turn so the boss only attacks once.
+    enemyActionLabel = freeAttackHit ? 'free-attack-hit' : 'free-attack-miss';
+  } else if (enemySkipsForeseen) {
     narrative += `Foreseen — the ${enemy.name}'s opening attack passes through empty air. `;
+    enemyActionLabel = 'foreseen-skip';
   } else if (enemySkipsTurn) {
     narrative += `The ${enemy.name} is still recovering from your roar. `;
+    enemyActionLabel = 'stunned';
   } else if (enemyAutoMiss) {
     narrative += `The ${enemy.name} strikes, but spectral webs deflect the blow! `;
-    // Remove the spider buff after use
+    enemyActionLabel = 'web-deflect';
   } else {
     const enemyAttackTotal = enemyAttackRoll + enemy.attackBonus;
     const effectiveDefense = playerAction === 'defend' ? playerDefense + 4 : playerDefense;
@@ -589,6 +603,7 @@ export function resolveCombatRound(
     } else {
       narrative += `The ${enemy.name}'s attack misses. (${enemyAttackRoll}+${enemy.attackBonus}=${enemyAttackTotal} vs ${effectiveDefense}) `;
     }
+    enemyActionLabel = 'attack';
   }
 
   // Apply damage
@@ -606,7 +621,7 @@ export function resolveCombatRound(
     round,
     playerAction,
     playerDamage,
-    enemyAction: enemySkipsTurn ? 'stunned' : 'attack',
+    enemyAction: enemyActionLabel,
     enemyDamage,
     narrative,
     playerHpAfter: newPlayerHp,

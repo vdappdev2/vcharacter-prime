@@ -314,24 +314,18 @@ export function getPuzzleChecks(): SkillCheck[] {
       },
     },
     {
+      // Mechanics live on GameState flags (bossEnemySkipsFirstAttack /
+      // bossEnemyGetsFreeFirstAttack) consumed in resolveCombatRound on
+      // round 1 of boss combat — see attemptPuzzle in
+      // src/routes/play/+page.svelte. No buff/debuff here on purpose:
+      // a "+1 attack" buff would silently bleed into getPlayerAttackMod's
+      // substring match.
       id: 'perceive',
       description: 'Sense the true path through the shifting corridors',
       stat: 'wis',
       dc: 14,
       successDesc: 'You sense the Primordial readying its strike and slip past its opening attack.',
       failureDesc: 'You stumble into an ambush position. The Primordial will strike first.',
-      successEffect: {
-        type: 'buff',
-        value: 1,
-        description: 'Foreseen: Primordial skips its first attack',
-        duration: 99,
-      },
-      failureEffect: {
-        type: 'debuff',
-        value: 0,
-        description: 'Ambushed: Primordial gets a free attack',
-        duration: 1,
-      },
     },
     {
       id: 'manipulate',
