@@ -22,9 +22,9 @@ value = (first 4 bytes as uint32) mod dieSize + 1`;
     "modifier": 0
   },
   "constitution": {
-    "dice": [6, 3, 4, 5],
-    "total": 18,
-    "modifier": 2
+    "dice": [4, 3, 4, 4],
+    "total": 15,
+    "modifier": 1
   },
   "intelligence": {
     "dice": [3, 2, 4, 1],

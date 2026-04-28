@@ -242,7 +242,7 @@
 	<ol>
 		<li><strong>Decipher Runes</strong> (INT, DC 14) — Success: +2 attack vs boss. Failure: 4 damage.</li>
 		<li><strong>Sense True Path</strong> (WIS, DC 14) — Success: the Primordial skips its first attack in the boss fight. Failure: the Primordial attacks you first, while you're unprepared — a free attack before your first action.</li>
-		<li><strong>Pick Lock</strong> (DEX, DC 14) — Success: Heal 8 HP. Failure: 3 damage.</li>
+		<li><strong>Manipulate the Lock</strong> (DEX, DC 14) — Success: Heal 8 HP. Failure: 3 damage.</li>
 	</ol>
 
 	<h3>Scene 5: The Spirit's Bargain</h3>
