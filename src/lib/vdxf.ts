@@ -156,7 +156,11 @@ export interface AchievementProofData {
   bossSceneBlockHeight: number;
   bossSceneBlockHash: string;
 
-  // Player actions sequence (verifiable replay input)
+  // Player actions sequence (verifiable replay input).
+  // CombatAction in src/lib/game/types.ts also includes 'flee', but the play
+  // UI doesn't surface a flee button and the Deer-spirit "flee safely" buff
+  // isn't currently consumed (see audit on spirit-ability plumbing). If flee
+  // is ever wired in, add it here and to ParsedAchievementData below.
   playerActions: ('attack' | 'defend' | 'special')[];
 
   // Summary stats

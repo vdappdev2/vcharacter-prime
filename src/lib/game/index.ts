@@ -83,7 +83,6 @@ export {
   choosePath,
   initGuardianCombat,
   getPuzzleChecks,
-  resolveSkillCheck,
   canChooseBoth,
   applyBargainChoice,
   initBossCombat,
