@@ -153,7 +153,7 @@ sex       = HMAC-SHA256(combinedSeed, "sex")           → d2`;
 	<p>The commitment is signed at block height <code>N</code>. Your character will be rolled using block <code>N+1</code> — a block that doesn't exist yet at the time you commit. This is the core of the fairness guarantee.</p>
 
 	<h3>Step 3: Wait for the Roll Block</h3>
-	<p>The system waits for block <code>N+1</code> to be mined. This block's hash is the "server seed" — the second half of the randomness. No one can predict or control what this hash will be.</p>
+	<p>The system waits for block <code>N+1</code> to be solved. This block's hash is the "server seed" — the second half of the randomness. No one can predict or control what this hash will be.</p>
 
 	<h3>Step 4: Roll Your Character</h3>
 	<p>Once block <code>N+1</code> exists, the two seeds are combined:</p>

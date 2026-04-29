@@ -35,7 +35,7 @@ Block 4041972 (PoS)
 <main class="max-w-3xl mx-auto px-6 py-12 prose-doc">
 	<h1>vcharacter-prime: provably fair character creation on Verus</h1>
 
-	<p>A player opens the vcharacter-prime page and clicks <em>Begin Character Creation</em>. The browser generates a 32-byte secret seed locally and shows a QR code. The player scans it with Verus Mobile, signs once with their VerusID, and waits for the next Verus block to be mined. When the block lands, six stats, an element, a spirit animal, and a sex appear on screen — derived from the player's secret combined with the new block's hash. A second signature stores the character permanently to the player's VerusID under a contentmultimap entry. The page renders. Then it forgets.</p>
+	<p>A player opens the vcharacter-prime page and clicks <em>Begin Character Creation</em>. The browser generates a 32-byte secret seed locally and shows a QR code. The player scans it with Verus Mobile, signs once with their VerusID, and waits for the next Verus block to be solved. When the block lands, six stats, an element, a spirit animal, and a sex appear on screen — derived from the player's secret combined with the new block's hash. A second signature stores the character permanently to the player's VerusID under a contentmultimap entry. The page renders. Then it forgets.</p>
 
 	<p>The app keeps no account, no email, no password, and no database row tied to the player. Open the same VerusID from a different machine and the same character is still there — because the character was never the app's. It belongs to the identity that signed it.</p>
 
