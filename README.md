@@ -36,6 +36,13 @@ Provably fair dice-based character creation with on-chain storage using Verus VD
    yarn dev
    ```
 
+## Testing
+
+```bash
+yarn vitest run     # unit tests for crypto primitives, dice, vdxf parsing
+yarn svelte-check   # type-check + Svelte diagnostics
+```
+
 ## Pages
 
 Live at [prime.vcharacter.xyz](https://prime.vcharacter.xyz):
