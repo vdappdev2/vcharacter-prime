@@ -5,7 +5,11 @@
  */
 
 import { PUBLIC_VERUS_NETWORK, PUBLIC_SWITCH_NETWORK_URL } from '$env/static/public';
-import packageJson from '../../package.json' with { type: 'json' };
+
+// Injected by Vite `define` in vite.config.ts — pulls version from package.json
+// at build time so the two can no longer drift, without requiring src/lib/config.ts
+// to reach outside the FS allow list.
+declare const __APP_VERSION__: string;
 
 // Environment detection
 export const isDev = import.meta.env.DEV;
@@ -171,6 +175,6 @@ export const COMMITMENT_CONFIG = {
 export const APP_META = {
   name: 'vcharacter-prime',
   description: 'Provably fair character creation on Verus',
-  version: packageJson.version,
+  version: __APP_VERSION__,
   network: CURRENT_NETWORK,
 };
