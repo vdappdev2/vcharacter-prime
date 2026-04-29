@@ -186,6 +186,16 @@
 	};
 </script>
 
+<svelte:head>
+	<title>Verify — vcharacter-prime</title>
+	<meta name="description" content="Look up any VerusID's stored characters and confirm each one was rolled fairly." />
+	<link rel="canonical" href="https://prime.vcharacter.xyz/verify" />
+	<meta property="og:title" content="Verify — vcharacter-prime" />
+	<meta property="og:description" content="Look up any VerusID's stored characters and confirm each one was rolled fairly." />
+	<meta name="twitter:title" content="Verify — vcharacter-prime" />
+	<meta name="twitter:description" content="Look up any VerusID's stored characters and confirm each one was rolled fairly." />
+</svelte:head>
+
 <main class="container mx-auto px-4 py-8 max-w-4xl">
 	<header class="text-center mb-12">
 		<h1 class="text-4xl font-bold text-accent mb-2">Verify Character</h1>

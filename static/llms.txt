@@ -1,0 +1,29 @@
+# vcharacter-prime
+
+> Provably fair character creation on the Verus blockchain. RPG
+> characters whose stats are determined by commit-reveal randomness
+> across a client seed and a future Verus block hash, owned by the
+> player's VerusID, with a verifiably replayable single-shot
+> adventure called The Primordial Trial.
+
+vcharacter-prime is a web app at https://prime.vcharacter.xyz. The
+character is signed once into the player's VerusID under a
+ContentMultiMap entry and can be read by any app that knows the
+identity name. Stats are 4d6 per ability score, with a d6 element,
+d12 spirit animal, and d2 sex.
+
+## Docs
+
+- [Verus primer](https://prime.vcharacter.xyz/verus-primer): the
+  three Verus primitives the app is built on — Proof of Power,
+  VerusID, and ContentMultiMap with VDXF keys.
+- [How it works](https://prime.vcharacter.xyz/how-it-works): how
+  characters are created, what data lives on-chain, and how anyone
+  can verify the rolls.
+- [Game guide](https://prime.vcharacter.xyz/game-guide): character
+  stats, traits, and how they shape The Primordial Trial.
+
+## Optional
+
+- [Full docs](https://prime.vcharacter.xyz/llms-full.txt): all three
+  doc pages concatenated as a single text file.

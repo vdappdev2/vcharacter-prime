@@ -1,12 +1,25 @@
 <script lang="ts">
 	import '../app.css';
+	import { page } from '$app/stores';
 	import { CURRENT_NETWORK, SWITCH_NETWORK_URL } from '$lib/config';
 
 	let { children } = $props();
 
 	const isTestnet = CURRENT_NETWORK === 'testnet';
 	const switchLabel = isTestnet ? 'Switch to Mainnet' : 'Switch to Testnet';
+
+	const SITE_URL = 'https://prime.vcharacter.xyz';
+	const OG_IMAGE = `${SITE_URL}/vcharacter-og-image.png`;
 </script>
+
+<svelte:head>
+	<meta property="og:type" content="website" />
+	<meta property="og:site_name" content="vcharacter-prime" />
+	<meta property="og:image" content={OG_IMAGE} />
+	<meta property="og:url" content="{SITE_URL}{$page.url.pathname}" />
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:image" content={OG_IMAGE} />
+</svelte:head>
 
 <div class="min-h-screen flex flex-col">
 	<!-- Network indicator -->

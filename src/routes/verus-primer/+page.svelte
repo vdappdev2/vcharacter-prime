@@ -25,6 +25,11 @@ Block 4041972 (PoS)
 <svelte:head>
 	<title>Verus Primer — vcharacter-prime: provably fair character creation on Verus</title>
 	<meta name="description" content="How vcharacter-prime works on three Verus primitives: Proof of Power, VerusID, and ContentMultiMap with VDXF keys." />
+	<link rel="canonical" href="https://prime.vcharacter.xyz/verus-primer" />
+	<meta property="og:title" content="Verus Primer — vcharacter-prime: provably fair character creation on Verus" />
+	<meta property="og:description" content="How vcharacter-prime works on three Verus primitives: Proof of Power, VerusID, and ContentMultiMap with VDXF keys." />
+	<meta name="twitter:title" content="Verus Primer — vcharacter-prime: provably fair character creation on Verus" />
+	<meta name="twitter:description" content="How vcharacter-prime works on three Verus primitives: Proof of Power, VerusID, and ContentMultiMap with VDXF keys." />
 </svelte:head>
 
 <main class="max-w-3xl mx-auto px-6 py-12 prose-doc">

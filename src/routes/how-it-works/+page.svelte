@@ -114,6 +114,11 @@ sex       = HMAC-SHA256(combinedSeed, "sex")           → d2`;
 <svelte:head>
 	<title>How it works — vcharacter-prime</title>
 	<meta name="description" content="How vcharacter-prime characters are created, what data lives on-chain, and how anyone can verify the rolls were fair." />
+	<link rel="canonical" href="https://prime.vcharacter.xyz/how-it-works" />
+	<meta property="og:title" content="How it works — vcharacter-prime" />
+	<meta property="og:description" content="How vcharacter-prime characters are created, what data lives on-chain, and how anyone can verify the rolls were fair." />
+	<meta name="twitter:title" content="How it works — vcharacter-prime" />
+	<meta name="twitter:description" content="How vcharacter-prime characters are created, what data lives on-chain, and how anyone can verify the rolls were fair." />
 </svelte:head>
 
 <main class="max-w-3xl mx-auto px-6 py-12 prose-doc">

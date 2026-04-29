@@ -808,6 +808,16 @@
 	}
 </script>
 
+<svelte:head>
+	<title>Play — The Primordial Trial</title>
+	<meta name="description" content="A verifiably replayable single-shot adventure for vcharacter-prime characters. Outcomes are recorded on-chain." />
+	<link rel="canonical" href="https://prime.vcharacter.xyz/play" />
+	<meta property="og:title" content="Play — The Primordial Trial" />
+	<meta property="og:description" content="A verifiably replayable single-shot adventure for vcharacter-prime characters. Outcomes are recorded on-chain." />
+	<meta name="twitter:title" content="Play — The Primordial Trial" />
+	<meta name="twitter:description" content="A verifiably replayable single-shot adventure for vcharacter-prime characters. Outcomes are recorded on-chain." />
+</svelte:head>
+
 <main class="container mx-auto px-4 py-8 max-w-4xl">
 	<header class="text-center mb-8">
 		<h1 class="text-4xl font-bold text-accent mb-2">The Primordial Trial</h1>

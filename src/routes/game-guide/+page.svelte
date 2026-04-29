@@ -5,6 +5,11 @@
 <svelte:head>
 	<title>Game guide — The Primordial Trial</title>
 	<meta name="description" content="A complete guide to character stats, traits, and how they shape your journey through The Primordial Trial." />
+	<link rel="canonical" href="https://prime.vcharacter.xyz/game-guide" />
+	<meta property="og:title" content="Game guide — The Primordial Trial" />
+	<meta property="og:description" content="A complete guide to character stats, traits, and how they shape your journey through The Primordial Trial." />
+	<meta name="twitter:title" content="Game guide — The Primordial Trial" />
+	<meta name="twitter:description" content="A complete guide to character stats, traits, and how they shape your journey through The Primordial Trial." />
 </svelte:head>
 
 <main class="max-w-3xl mx-auto px-6 py-12 prose-doc">

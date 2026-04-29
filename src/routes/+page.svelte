@@ -406,6 +406,16 @@
 	}
 </script>
 
+<svelte:head>
+	<title>vcharacter-prime — Provably fair characters on Verus</title>
+	<meta name="description" content="Roll an RPG character whose stats come from a client seed and a future Verus block hash. Stored on your VerusID; readable by anyone." />
+	<link rel="canonical" href="https://prime.vcharacter.xyz/" />
+	<meta property="og:title" content="vcharacter-prime — Provably fair characters on Verus" />
+	<meta property="og:description" content="Roll an RPG character whose stats come from a client seed and a future Verus block hash. Stored on your VerusID; readable by anyone." />
+	<meta name="twitter:title" content="vcharacter-prime — Provably fair characters on Verus" />
+	<meta name="twitter:description" content="Roll an RPG character whose stats come from a client seed and a future Verus block hash. Stored on your VerusID; readable by anyone." />
+</svelte:head>
+
 <main class="container mx-auto px-4 py-8 max-w-4xl">
 	<header class="text-center mb-12">
 		<h1 class="text-4xl font-bold text-accent mb-2">vcharacter-prime</h1>
