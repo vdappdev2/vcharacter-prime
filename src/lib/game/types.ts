@@ -195,6 +195,8 @@ export interface GameEffect {
   description?: string;
   /** Duration in scenes (for buffs/debuffs) */
   duration?: number;
+  /** Short label for combat-roll breakdowns; carried through to ActiveEffect */
+  label?: string;
 }
 
 // ============================================================================
@@ -213,6 +215,13 @@ export interface ActiveEffect {
   value: number;
   /** Scenes remaining */
   scenesRemaining: number;
+  /**
+   * Short label shown in combat-roll breakdowns (e.g. "Eagle", "Rune", "Power").
+   * The breakdown emits `${value}${label}` so a player can tell at a glance which
+   * buff is contributing to their roll. Falls back to the first word of
+   * description if absent.
+   */
+  label?: string;
 }
 
 /**

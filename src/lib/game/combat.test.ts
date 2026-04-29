@@ -4,15 +4,20 @@ import {
   createPrimordial,
   getPlayerAttackMod,
   getPlayerDefense,
+  calculatePlayerDamage,
   getCombatOutcome,
   applyWoodRegeneration,
+  useSpiritAbility,
+  PRIMORDIAL_STANDARD,
+  PRIMORDIAL_HARD,
 } from './combat';
 import type { GameState, ActiveEffect, Enemy } from './types';
-import type { StoredCharacter, Element } from '../types';
+import type { StoredCharacter, Element, SpiritAnimal } from '../types';
 
 function mkChar(overrides: Partial<{
   str: number; dex: number; con: number; int: number; wis: number; cha: number;
   element: Element;
+  spiritAnimal: SpiritAnimal;
 }> = {}): StoredCharacter {
   const stat = (mod: number) => ({ dice: [3, 4, 4, 4] as [number, number, number, number], total: 13 + mod * 2, modifier: mod });
   return {
@@ -25,7 +30,7 @@ function mkChar(overrides: Partial<{
       wis: stat(overrides.wis ?? 0),
       cha: stat(overrides.cha ?? 0),
     },
-    traits: { element: overrides.element ?? 'Fire', spiritAnimal: 'Wolf', sex: 'Male' },
+    traits: { element: overrides.element ?? 'Fire', spiritAnimal: overrides.spiritAnimal ?? 'Wolf', sex: 'Male' },
     verification: { block_height: 0, block_hash: '0'.repeat(64), client_seed: '0'.repeat(64), timestamp: 0 },
     userIdentity: '',
     userFriendlyName: '',
@@ -328,5 +333,164 @@ describe('Mutual KO + Wood last gasp (b2)', () => {
     expect(result.playerHpAfter).toBe(0);
     expect(result.enemyHpAfter).toBe(0);
     expect(result.narrative).toContain('Darkness');
+  });
+});
+
+// ============================================================================
+// Spirit ability — three-category model
+// ============================================================================
+
+describe('useSpiritAbility — offensive (Tiger / Wolf / Dragon / Eagle)', () => {
+  for (const spirit of ['Tiger', 'Wolf', 'Dragon', 'Eagle'] as const) {
+    it(`${spirit}: +2 attack & damage buff at WIS 0`, () => {
+      const state = mkBossState({ character: mkChar({ spiritAnimal: spirit, wis: 0 }) });
+      const result = useSpiritAbility(spirit, state);
+      expect(result.healing).toBeUndefined();
+      expect(result.buff).toBeDefined();
+      expect(result.buff!.value).toBe(2);
+      expect(result.buff!.scenesRemaining).toBe(1);
+      // Substring tokens that getPlayerAttackMod / calculatePlayerDamage match on.
+      expect(result.buff!.description).toContain('attack');
+      expect(result.buff!.description).toContain('damage');
+      expect(result.buff!.description).toContain(spirit);
+    });
+  }
+
+  it('scales with WIS modifier', () => {
+    const state = mkBossState({ character: mkChar({ spiritAnimal: 'Tiger', wis: 3 }) });
+    expect(useSpiritAbility('Tiger', state).buff!.value).toBe(5);
+  });
+
+  it('clamps negative WIS to 0', () => {
+    const state = mkBossState({ character: mkChar({ spiritAnimal: 'Tiger', wis: -2 }) });
+    expect(useSpiritAbility('Tiger', state).buff!.value).toBe(2);
+  });
+});
+
+describe('useSpiritAbility — defensive (Bear / Elephant / Octopus / Spider)', () => {
+  for (const spirit of ['Bear', 'Elephant', 'Octopus', 'Spider'] as const) {
+    it(`${spirit}: +3 defense buff at WIS 0`, () => {
+      const state = mkBossState({ character: mkChar({ spiritAnimal: spirit, wis: 0 }) });
+      const result = useSpiritAbility(spirit, state);
+      expect(result.healing).toBeUndefined();
+      expect(result.buff).toBeDefined();
+      expect(result.buff!.value).toBe(3);
+      expect(result.buff!.scenesRemaining).toBe(1);
+      // Substring token that getPlayerDefense matches on.
+      expect(result.buff!.description).toContain('defense');
+      expect(result.buff!.description).toContain(spirit);
+    });
+  }
+
+  it('scales with WIS modifier', () => {
+    const state = mkBossState({ character: mkChar({ spiritAnimal: 'Bear', wis: 3 }) });
+    expect(useSpiritAbility('Bear', state).buff!.value).toBe(6);
+  });
+});
+
+describe('useSpiritAbility — restorative (Whale / Owl / Deer / Frog)', () => {
+  for (const spirit of ['Whale', 'Owl', 'Deer', 'Frog'] as const) {
+    it(`${spirit}: heals 6 HP at WIS 0`, () => {
+      const state = mkBossState({ character: mkChar({ spiritAnimal: spirit, wis: 0 }) });
+      const result = useSpiritAbility(spirit, state);
+      expect(result.buff).toBeUndefined();
+      expect(result.healing).toBe(6);
+    });
+  }
+
+  it('scales with WIS modifier', () => {
+    const state = mkBossState({ character: mkChar({ spiritAnimal: 'Whale', wis: 3 }) });
+    expect(useSpiritAbility('Whale', state).healing).toBe(9);
+  });
+
+  it('clamps negative WIS to 0', () => {
+    const state = mkBossState({ character: mkChar({ spiritAnimal: 'Whale', wis: -3 }) });
+    expect(useSpiritAbility('Whale', state).healing).toBe(6);
+  });
+});
+
+describe('Spirit buff substring matching — guards against description drift', () => {
+  it('offensive buff lifts both attack and damage, leaves defense alone', () => {
+    const character = mkChar({ spiritAnimal: 'Tiger', str: 1, dex: 1 });
+    const state = mkBossState({ character });
+    const baseAttack = getPlayerAttackMod(character, [], 1);
+    const baseDamage = calculatePlayerDamage(character, 5, [], 'Fire');
+    const baseDefense = getPlayerDefense(character, [], [], 1);
+    const buffs = [useSpiritAbility('Tiger', state).buff!];
+
+    expect(getPlayerAttackMod(character, buffs, 1)).toBe(baseAttack + 2);
+    expect(calculatePlayerDamage(character, 5, buffs, 'Fire')).toBe(baseDamage + 2);
+    expect(getPlayerDefense(character, buffs, [], 1)).toBe(baseDefense);
+  });
+
+  it('defensive buff lifts defense only', () => {
+    const character = mkChar({ spiritAnimal: 'Bear', str: 1, dex: 1 });
+    const state = mkBossState({ character });
+    const baseAttack = getPlayerAttackMod(character, [], 1);
+    const baseDamage = calculatePlayerDamage(character, 5, [], 'Fire');
+    const baseDefense = getPlayerDefense(character, [], [], 1);
+    const buffs = [useSpiritAbility('Bear', state).buff!];
+
+    expect(getPlayerAttackMod(character, buffs, 1)).toBe(baseAttack);
+    expect(calculatePlayerDamage(character, 5, buffs, 'Fire')).toBe(baseDamage);
+    expect(getPlayerDefense(character, buffs, [], 1)).toBe(baseDefense + 3);
+  });
+});
+
+// ============================================================================
+// Boss HP — bumped to absorb the element-perk power gain
+// ============================================================================
+
+describe('Attack breakdown labels', () => {
+  it('names each buff by its label rather than emitting a generic "buff" sum', () => {
+    // Tiger spirit + Rune (INT puzzle) on round 2 → breakdown should call out
+    // both sources explicitly, not mash them into "+4buff".
+    const character = mkChar({ str: 1, int: 2, spiritAnimal: 'Tiger' });
+    const tigerBuff: ActiveEffect = {
+      description: 'Tiger Pounce: +2 attack & damage',
+      type: 'buff', value: 2, scenesRemaining: 1, label: 'Tiger',
+    };
+    const runeBuff: ActiveEffect = {
+      description: 'Rune Knowledge: +2 to attack vs Primordial',
+      type: 'buff', value: 2, scenesRemaining: 99, label: 'Rune',
+    };
+    const state = mkBossState({
+      character,
+      buffs: [tigerBuff, runeBuff],
+      combat: { enemy: createPrimordial(false), round: 2, playerDefending: false, rounds: [] },
+    });
+    const result = resolveCombatRound(state, 'attack', 10, 4, 1, 1);
+    // Round 2 → INT bonus active. Expected breakdown: "1+2INT+2Tiger+2Rune".
+    expect(result.narrative).toContain('1+2INT+2Tiger+2Rune');
+    expect(result.narrative).not.toContain('buff');
+  });
+
+  it('falls back to first word of description when label is absent', () => {
+    const character = mkChar({ str: 1 });
+    const legacy: ActiveEffect = {
+      description: 'Mystery Power: +1 attack — no label set',
+      type: 'buff', value: 1, scenesRemaining: 99,
+    };
+    const state = mkBossState({ character, buffs: [legacy] });
+    const result = resolveCombatRound(state, 'attack', 10, 4, 1, 1);
+    expect(result.narrative).toContain('1+1Mystery');
+  });
+
+  it('surfaces the Air round-1 +4 as its own segment, not lumped into buffs', () => {
+    const character = mkChar({ str: 1, element: 'Air' });
+    const state = mkBossState({ character });
+    const result = resolveCombatRound(state, 'attack', 10, 4, 1, 1);
+    // Round 1, no INT bonus, Air bonus active. Expected breakdown: "1+4Air".
+    expect(result.narrative).toContain('1+4Air');
+  });
+});
+
+describe('Primordial boss HP', () => {
+  it('standard has 30 maxHp', () => {
+    expect(PRIMORDIAL_STANDARD.maxHp).toBe(30);
+  });
+
+  it('hard has 31 maxHp', () => {
+    expect(PRIMORDIAL_HARD.maxHp).toBe(31);
   });
 });

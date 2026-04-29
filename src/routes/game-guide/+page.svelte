@@ -176,39 +176,38 @@
 	<hr/>
 
 	<h2>Spirit Animals</h2>
-	<p>Your spirit animal is rolled on a d12. Each grants a <strong>one-use ability</strong> that can be activated during any combat encounter. Choose your moment wisely — you only get one use per trial.</p>
-	<p>Spirit animals with numeric effects are enhanced by your <strong>WIS modifier</strong> (Spirit Bond). Higher WIS = stronger spirit power.</p>
+	<p>Your spirit animal is rolled on a d12. Each grants a <strong>one-use ability</strong> activated during any combat encounter — guardian or boss. You only get one use per trial.</p>
+	<p>Every spirit ability scales with your <strong>WIS modifier</strong> (Spirit Bond). Higher WIS means a stronger one-time spirit power, regardless of which animal you rolled.</p>
 
-	<h3>Combat Spirits (enhanced by WIS)</h3>
+	<h3>Three categories</h3>
 	<table>
 		<thead>
-			<tr><th>Spirit</th><th>Ability</th><th>Base Effect</th><th>With WIS Bonus</th></tr>
+			<tr><th>Category</th><th>Effect</th><th>Spirits</th></tr>
 		</thead>
 		<tbody>
-			<tr><td><strong>Wolf</strong></td><td>Pack Tactics</td><td>+5 to next attack</td><td>+5 + WIS mod</td></tr>
-			<tr><td><strong>Dragon</strong></td><td>Dragon Fire</td><td>8 direct damage</td><td>8 + WIS mod</td></tr>
-			<tr><td><strong>Tiger</strong></td><td>Pounce</td><td>+3 damage on next attack</td><td>+3 + WIS mod</td></tr>
-			<tr><td><strong>Whale</strong></td><td>Ocean Vitality</td><td>Heal 6 HP</td><td>Heal 6 + WIS mod</td></tr>
-			<tr><td><strong>Frog</strong></td><td>Venom</td><td>2 poison damage/round for 3 rounds</td><td>(2 + WIS mod/2) per round</td></tr>
+			<tr><td><strong>Offensive</strong></td><td>+(2 + WIS mod) to attack and damage, rest of this combat</td><td>Tiger, Wolf, Dragon, Eagle</td></tr>
+			<tr><td><strong>Defensive</strong></td><td>+(3 + WIS mod) to defense, rest of this combat</td><td>Bear, Elephant, Octopus, Spider</td></tr>
+			<tr><td><strong>Restorative</strong></td><td>Instant heal of (6 + WIS mod) HP</td><td>Whale, Owl, Deer, Frog</td></tr>
 		</tbody>
 	</table>
+	<p><strong>Strategy tip:</strong> Offensive and defensive buffs apply for the rest of the current combat — earlier use means more rounds of benefit, but holding the spirit for the boss fight is reasonable if guardian combat is going well. Restorative is instant healing, best held for when your HP is low.</p>
 
-	<h3>Tactical Spirits (not affected by WIS)</h3>
-	<table>
-		<thead>
-			<tr><th>Spirit</th><th>Ability</th><th>Effect</th></tr>
-		</thead>
-		<tbody>
-			<tr><td><strong>Bear</strong></td><td>Mighty Roar</td><td>Enemy skips their next turn (stun)</td></tr>
-			<tr><td><strong>Eagle</strong></td><td>Perfect Clarity</td><td>Automatically succeed on next check/attack</td></tr>
-			<tr><td><strong>Spider</strong></td><td>Spectral Webs</td><td>Enemy's next attack automatically misses</td></tr>
-			<tr><td><strong>Owl</strong></td><td>Night Whispers</td><td>Automatically succeed on perception/puzzle check</td></tr>
-			<tr><td><strong>Octopus</strong></td><td>Escape Artist</td><td>Immune to grapple and traps</td></tr>
-			<tr><td><strong>Elephant</strong></td><td>Unshakeable</td><td>Immune to fear and stun effects</td></tr>
-			<tr><td><strong>Deer</strong></td><td>Swift Escape</td><td>Can flee combat without penalty</td></tr>
-		</tbody>
-	</table>
-	<p><strong>Strategy tip:</strong> Combat spirits (Wolf, Dragon, Tiger) benefit from being used in later rounds when their WIS bonus stacks with existing momentum. Tactical spirits (Bear, Spider) are best used at critical moments regardless of WIS.</p>
+	<h3>Per-animal flavor</h3>
+	<p>Each animal channels its category effect through its own narrative move. The mechanics are categorical; the flavor is per-spirit.</p>
+	<ul>
+		<li><strong>Tiger — Pounce</strong> (offensive): leap with the Tiger's ferocity</li>
+		<li><strong>Wolf — Pack Tactics</strong> (offensive): pack instinct guides every strike</li>
+		<li><strong>Dragon — Primordial Flame</strong> (offensive): dragon fire courses through your blows</li>
+		<li><strong>Eagle — Talon Strike</strong> (offensive): eagle vision finds every opening</li>
+		<li><strong>Bear — Resolve</strong> (defensive): blows glance off the Bear's spirit</li>
+		<li><strong>Elephant — Stand Firm</strong> (defensive): rooted by Elephant strength</li>
+		<li><strong>Octopus — Slip</strong> (defensive): every grasp slides past you</li>
+		<li><strong>Spider — Web Shroud</strong> (defensive): spectral webs deflect attacks</li>
+		<li><strong>Whale — Ocean Vitality</strong> (restorative): oceanic vitality pours into you</li>
+		<li><strong>Owl — Insight</strong> (restorative): the Owl's clarity mends wounds</li>
+		<li><strong>Deer — Grace</strong> (restorative): the Deer's grace renews you</li>
+		<li><strong>Frog — Regeneration</strong> (restorative): Frog spirit knits flesh</li>
+	</ul>
 
 	<hr/>
 
@@ -249,13 +248,13 @@
 	<p>A CHA check (DC 15) determines your negotiating power:</p>
 	<ul>
 		<li><strong>Pass:</strong> Receive both Gift of Power (+2 damage) and Gift of Wisdom (+2 defense) vs the final boss</li>
-		<li><strong>Fail:</strong> Choose one gift. Choosing Power alone triggers <strong>Hard Mode</strong> — the Primordial is stronger (28 HP, +5 attack, 14 defense, 6 base damage, regenerates 2 HP/round)</li>
+		<li><strong>Fail:</strong> Choose one gift. Choosing Power alone triggers <strong>Hard Mode</strong> — the Primordial is stronger (31 HP, +5 attack, 14 defense, 6 base damage, regenerates 2 HP/round)</li>
 	</ul>
 
 	<h3>Scene 6: The Final Trial</h3>
 	<p>Battle against <strong>The Primordial</strong> — a being of pure elemental chaos.</p>
-	<p><strong>Standard Mode:</strong> 25 HP, +4 attack, 13 defense, 5 base damage, d6 extra damage on special<br/>
-	<strong>Hard Mode:</strong> 28 HP, +5 attack, 14 defense, 6 base damage, d6 extra damage + 2 HP regen/round</p>
+	<p><strong>Standard Mode:</strong> 30 HP, +4 attack, 13 defense, 5 base damage, d6 extra damage on special<br/>
+	<strong>Hard Mode:</strong> 31 HP, +5 attack, 14 defense, 6 base damage, d6 extra damage + 2 HP regen/round</p>
 	<p>This is where every stat comes together. STR and INT power your attacks, DEX and WIS protect you, CON keeps you standing, and the gifts from your CHA bargain tip the scales.</p>
 
 	<h3>Scene 7: Mark of the Worthy</h3>

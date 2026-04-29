@@ -124,7 +124,7 @@ export const GUARDIANS: Record<Element, Omit<Enemy, 'hp'>> = {
 export const PRIMORDIAL_STANDARD: Omit<Enemy, 'hp'> = {
   name: 'The Primordial',
   element: 'Fire', // Primordial encompasses all elements
-  maxHp: 25,
+  maxHp: 30,
   attackBonus: 4,
   defense: 13,
   baseDamage: 5,
@@ -135,7 +135,7 @@ export const PRIMORDIAL_STANDARD: Omit<Enemy, 'hp'> = {
 export const PRIMORDIAL_HARD: Omit<Enemy, 'hp'> = {
   name: 'The Primordial (Empowered)',
   element: 'Fire',
-  maxHp: 28,
+  maxHp: 31,
   attackBonus: 5,
   defense: 14,
   baseDamage: 6,
@@ -218,155 +218,96 @@ export function shouldRegenerate(playerElement: Element): boolean {
 // ============================================================================
 
 export interface SpiritAbilityResult {
-  /** Description of what happened */
   narrative: string;
-  /** Direct damage to enemy */
-  damage?: number;
-  /** Healing to player */
   healing?: number;
-  /** Buff to add */
   buff?: ActiveEffect;
-  /** Whether enemy skips turn */
-  enemySkipsTurn?: boolean;
-  /** Whether to auto-succeed next check */
-  autoSucceed?: boolean;
-  /** Whether to auto-miss enemy attack */
-  enemyAutoMiss?: boolean;
-  /** Damage over time to enemy */
-  poisonDamage?: number;
-  /** Poison duration */
-  poisonDuration?: number;
 }
 
+type SpiritCategory = 'offensive' | 'defensive' | 'restorative';
+
 /**
- * Use spirit animal ability
+ * Spirit animals are grouped into three mechanical categories. Per-animal
+ * flavor (move name + narrative) differentiates them; the math is per
+ * category. WIS modifier scales every category — this is the Spirit Bond
+ * pitch in the game guide.
+ */
+const SPIRIT_CATEGORIES: Record<SpiritAnimal, SpiritCategory> = {
+  Tiger: 'offensive',
+  Wolf: 'offensive',
+  Dragon: 'offensive',
+  Eagle: 'offensive',
+  Bear: 'defensive',
+  Elephant: 'defensive',
+  Octopus: 'defensive',
+  Spider: 'defensive',
+  Whale: 'restorative',
+  Owl: 'restorative',
+  Deer: 'restorative',
+  Frog: 'restorative',
+};
+
+const SPIRIT_FLAVOR: Record<SpiritAnimal, { move: string; narrative: (wisNote: string) => string }> = {
+  Tiger:    { move: 'Pounce',           narrative: (n) => `You pounce with the Tiger's ferocity. Your strikes will land with devastating power.${n}` },
+  Wolf:     { move: 'Pack Tactics',     narrative: (n) => `You channel the Wolf. Pack tactics guide every strike.${n}` },
+  Dragon:   { move: 'Primordial Flame', narrative: (n) => `Dragon fire courses through your veins. Each blow sears.${n}` },
+  Eagle:    { move: 'Talon Strike',     narrative: (n) => `Eagle vision sharpens. You see every opening.${n}` },
+  Bear:     { move: 'Resolve',          narrative: (n) => `The Bear's spirit settles over you. Blows glance off.${n}` },
+  Elephant: { move: 'Stand Firm',       narrative: (n) => `Elephant strength roots you in place. You will not be moved.${n}` },
+  Octopus:  { move: 'Slip',             narrative: (n) => `Like the Octopus, you slip every grasp aimed at you.${n}` },
+  Spider:   { move: 'Web Shroud',       narrative: (n) => `Spectral webs curl around you, deflecting blows.${n}` },
+  Whale:    { move: 'Ocean Vitality',   narrative: (n) => `The Whale spirit fills you with oceanic vitality.${n}` },
+  Owl:      { move: 'Insight',          narrative: (n) => `The Owl's clarity mends your wounds.${n}` },
+  Deer:     { move: 'Grace',            narrative: (n) => `The Deer's grace renews you.${n}` },
+  Frog:     { move: 'Regeneration',     narrative: (n) => `Frog spirit knits flesh back together.${n}` },
+};
+
+/**
+ * Use spirit animal ability.
  *
- * WIS "Spirit Bond" enhances numeric abilities:
- * - Wolf: +5 + wisMod attack buff
- * - Dragon: 8 + wisMod direct damage
- * - Tiger: +3 + wisMod damage buff
- * - Whale: 6 + wisMod healing
- * - Frog: 2 + floor(wisMod/2) poison per round
- * - Boolean effects (Bear, Eagle, Spider, Owl, Octopus, Elephant, Deer): unchanged
+ * Three categories — offensive (atk/dmg buff), defensive (defense buff),
+ * restorative (instant heal). All scale with the player's WIS modifier
+ * (clamped at 0). Buffs use scenesRemaining: 1 — they apply for the rest
+ * of the current combat scene and tick down on the next advanceScene call.
+ *
+ * Buff descriptions embed the substring tokens that getPlayerAttackMod /
+ * calculatePlayerDamage / getPlayerDefense already match on, so no new
+ * consumer plumbing is needed.
  */
 export function useSpiritAbility(spirit: SpiritAnimal, state: GameState): SpiritAbilityResult {
   const wisMod = Math.max(0, state.character.stats.wis.modifier);
   const wisNote = wisMod > 0 ? ' Your spiritual bond amplifies the effect.' : '';
+  const flavor = SPIRIT_FLAVOR[spirit];
+  const narrative = flavor.narrative(wisNote);
 
-  switch (spirit) {
-    case 'Wolf': {
-      const value = 5 + wisMod;
+  switch (SPIRIT_CATEGORIES[spirit]) {
+    case 'offensive': {
+      const value = 2 + wisMod;
       return {
-        narrative: `You channel the spirit of the Wolf. Pack tactics guide your next strike.${wisNote}`,
+        narrative,
         buff: {
-          description: `Wolf Pack Tactics: +${value} to next attack`,
+          description: `${spirit} ${flavor.move}: +${value} attack & damage`,
           type: 'buff',
           value,
           scenesRemaining: 1,
+          label: spirit,
         },
       };
     }
-
-    case 'Bear':
-      return {
-        narrative: 'You unleash a mighty roar infused with the Bear spirit. Your enemy staggers back, stunned.',
-        enemySkipsTurn: true,
-      };
-
-    case 'Eagle':
-      return {
-        narrative: 'The Eagle spirit grants you perfect clarity. You will not miss your mark.',
-        autoSucceed: true,
-      };
-
-    case 'Dragon': {
-      const damage = 8 + wisMod;
-      return {
-        narrative: `Ancient dragon fire erupts from within you, engulfing your foe in primordial flame for ${damage} damage!${wisNote}`,
-        damage,
-      };
-    }
-
-    case 'Octopus':
-      return {
-        narrative: 'Like the Octopus, you slip free from all constraints. No trap can hold you.',
-        buff: {
-          description: 'Octopus Escape: Immune to grapple/trap',
-          type: 'buff',
-          value: 0,
-          scenesRemaining: 99,
-        },
-      };
-
-    case 'Owl':
-      return {
-        narrative: 'The Owl whispers secrets of the night. Hidden truths are revealed to you.',
-        autoSucceed: true, // For perception/puzzle checks
-      };
-
-    case 'Tiger': {
+    case 'defensive': {
       const value = 3 + wisMod;
       return {
-        narrative: `You pounce with the ferocity of the Tiger. Your next strike will be devastating.${wisNote}`,
+        narrative,
         buff: {
-          description: `Tiger Pounce: +${value} damage on next attack`,
+          description: `${spirit} ${flavor.move}: +${value} defense`,
           type: 'buff',
           value,
           scenesRemaining: 1,
+          label: spirit,
         },
       };
     }
-
-    case 'Deer':
-      return {
-        narrative: 'With the Deer\'s grace, you vanish from the battlefield. The enemy cannot follow.',
-        // Special: allows fleeing combat without penalty
-        buff: {
-          description: 'Deer Swift Escape: Can flee safely',
-          type: 'buff',
-          value: 0,
-          scenesRemaining: 1,
-        },
-      };
-
-    case 'Spider':
-      return {
-        narrative: 'Spectral webs ensnare your foe. Their next attack will surely miss.',
-        enemyAutoMiss: true,
-      };
-
-    case 'Whale': {
-      const healing = 6 + wisMod;
-      return {
-        narrative: `The Whale spirit fills you with oceanic vitality. Your wounds mend for ${healing} HP.${wisNote}`,
-        healing,
-      };
-    }
-
-    case 'Elephant':
-      return {
-        narrative: 'You become immovable as the Elephant. Fear and pain cannot touch you.',
-        buff: {
-          description: 'Elephant Unshakeable: Immune to fear/stun',
-          type: 'buff',
-          value: 0,
-          scenesRemaining: 99,
-        },
-      };
-
-    case 'Frog': {
-      const poisonDamage = 2 + Math.floor(wisMod / 2);
-      return {
-        narrative: `Venom of the Frog spirit seeps into your enemy. They will suffer ${poisonDamage} damage per round.${wisNote}`,
-        poisonDamage,
-        poisonDuration: 3,
-      };
-    }
-
-    default:
-      return {
-        narrative: 'You call upon your spirit animal, but nothing happens.',
-      };
+    case 'restorative':
+      return { narrative, healing: 6 + wisMod };
   }
 }
 
@@ -566,11 +507,18 @@ export function resolveCombatRound(
       const attackTotal = playerAttackRoll + attackMod;
       const hit = attackTotal >= enemy.defense;
 
-      // Build attack breakdown string
+      // Build attack breakdown string. Each contribution gets its own segment
+      // so a player can see at a glance which buffs are active — e.g.
+      // "1+2INT+4Air+2Eagle+2Rune" rather than the old opaque "1+2INT+8buff".
       const modParts = [`${strMod}`];
       if (intMod > 0) modParts.push(`${intMod}INT`);
-      const buffMod = attackMod - strMod - intMod;
-      if (buffMod > 0) modParts.push(`${buffMod}buff`);
+      if (round === 1 && character.traits.element === 'Air') modParts.push('4Air');
+      for (const buff of buffs) {
+        if (buff.description.includes('attack') || buff.description.includes('Pack Tactics')) {
+          const label = buff.label ?? buff.description.split(/[ :]/)[0];
+          modParts.push(`${buff.value}${label}`);
+        }
+      }
       const modBreakdown = modParts.join('+');
 
       if (hit) {
@@ -611,10 +559,6 @@ export function resolveCombatRound(
   }
 
   // --- Enemy Turn ---
-  // Check for status effects
-  const enemySkipsTurn = combat.rounds.length > 0 &&
-    combat.rounds[combat.rounds.length - 1]?.narrative.includes('stunned');
-  const enemyAutoMiss = buffs.some(b => b.description.includes('Spider'));
   // WIS-puzzle one-shot: success on the perceive check skips the boss's first attack.
   const enemySkipsForeseen = isFirstBossRound && !!state.bossEnemySkipsFirstAttack;
 
@@ -626,12 +570,6 @@ export function resolveCombatRound(
   } else if (enemySkipsForeseen) {
     narrative += `Foreseen — the ${enemy.name}'s opening attack passes through empty air. `;
     enemyActionLabel = 'foreseen-skip';
-  } else if (enemySkipsTurn) {
-    narrative += `The ${enemy.name} is still recovering from your roar. `;
-    enemyActionLabel = 'stunned';
-  } else if (enemyAutoMiss) {
-    narrative += `The ${enemy.name} strikes, but spectral webs deflect the blow! `;
-    enemyActionLabel = 'web-deflect';
   } else {
     const enemyAttackTotal = enemyAttackRoll + enemy.attackBonus;
     const effectiveDefense = playerAction === 'defend' ? playerDefense + 4 : playerDefense;

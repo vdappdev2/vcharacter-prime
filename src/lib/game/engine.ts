@@ -203,6 +203,7 @@ export function choosePath(state: GameState, path: PathChoice): GameState {
         type: 'buff',
         value: 1,
         scenesRemaining: 99, // Lasts entire game
+        label: 'Might',
       });
       break;
     case 'cunning':
@@ -211,6 +212,7 @@ export function choosePath(state: GameState, path: PathChoice): GameState {
         type: 'buff',
         value: 2,
         scenesRemaining: 99,
+        label: 'Cunning',
       });
       break;
     case 'spirit':
@@ -219,6 +221,7 @@ export function choosePath(state: GameState, path: PathChoice): GameState {
         type: 'buff',
         value: 2,
         scenesRemaining: 99,
+        label: 'Spirit',
       });
       break;
     case 'endurance':
@@ -227,6 +230,7 @@ export function choosePath(state: GameState, path: PathChoice): GameState {
         type: 'buff',
         value: 3,
         scenesRemaining: 99,
+        label: 'Endurance',
       });
       break;
     case 'charm':
@@ -235,6 +239,7 @@ export function choosePath(state: GameState, path: PathChoice): GameState {
         type: 'buff',
         value: 1,
         scenesRemaining: 99,
+        label: 'Charm',
       });
       break;
     case 'shadows':
@@ -243,6 +248,7 @@ export function choosePath(state: GameState, path: PathChoice): GameState {
         type: 'buff',
         value: 1,
         scenesRemaining: 99,
+        label: 'Shadow',
       });
       break;
   }
@@ -307,6 +313,7 @@ export function getPuzzleChecks(): SkillCheck[] {
         value: 2,
         description: 'Rune Knowledge: +2 to attack vs Primordial',
         duration: 99,
+        label: 'Rune',
       },
       failureEffect: {
         type: 'damage',
@@ -386,6 +393,7 @@ export function applyBargainChoice(
       type: 'buff',
       value: 2,
       scenesRemaining: 99,
+      label: 'Power',
     });
   }
 
@@ -395,6 +403,7 @@ export function applyBargainChoice(
       type: 'buff',
       value: 2,
       scenesRemaining: 99,
+      label: 'Wisdom',
     });
   }
 

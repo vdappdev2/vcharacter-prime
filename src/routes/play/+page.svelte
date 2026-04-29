@@ -379,10 +379,6 @@
 			const abilityResult = useSpiritAbility(gameState.character.traits.spiritAnimal, gameState);
 			gameState = useSpiritAbilityFlag(gameState);
 
-			// Apply ability effects
-			if (abilityResult.damage && gameState.combat) {
-				gameState.combat.enemy.hp = Math.max(0, gameState.combat.enemy.hp - abilityResult.damage);
-			}
 			if (abilityResult.healing) {
 				gameState = applyHealing(gameState, abilityResult.healing);
 			}
@@ -392,13 +388,6 @@
 
 			combatMessage = abilityResult.narrative;
 			showingCombatResult = true;
-
-			// Check if combat is over after ability
-			if (gameState.combat && gameState.combat.enemy.hp <= 0) {
-				setTimeout(() => {
-					finishCombat('victory');
-				}, 2000);
-			}
 			return;
 		}
 
@@ -526,6 +515,7 @@
 					type: 'buff',
 					value: check.successEffect.value,
 					scenesRemaining: 99,
+					label: check.successEffect.label,
 				});
 			}
 		} else if (!success && check.failureEffect) {
