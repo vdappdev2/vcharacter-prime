@@ -113,7 +113,7 @@ Block 4041972 (PoS)
 
 	<p>A character on vcharacter-prime is more than persistent. It is <em>addressable</em> by anything with a Verus node and a key.</p>
 
-	<p>The container is the contentmultimap — a field on every VerusID that maps a key to an ordered list of structured data entries. The keys are not strings. They are VDXF identifiers: deterministic i-addresses derived from a namespace string under a controlling identity. Any app, given the namespace <code>vcharacter.vrsc::prime.inaugural</code>, can compute the same i-address — <code>iJxgKswyBJofVV5kFSdx4EudSFrtchdVWA</code> — and use it to look up entries on any VerusID. There is no registry to query, no permission to request, no API to call beyond the standard <code>getidentity</code>.</p>
+	<p>The container is the contentmultimap — a field on every VerusID that maps a key to an ordered list of structured data entries. The keys are not strings. They are VDXF identifiers: deterministic i-addresses derived from a namespace string under a controlling identity. Any app, given the namespace <code>vcharacter.vrsc::prime.inaugural</code>, can compute the same i-address — <code>iJxgKswyBJofVV5kFSdx4EudSFrtchdVWA</code> — and use it to look up entries on any VerusID. There is no registry to query, no permission to request, no API to call beyond <code>getidentitycontent</code> — the dedicated RPC that surfaces both current and historical contentmultimap entries, including any that have rolled out of the identity's current state.</p>
 
 	<p>A vcharacter-prime character lives under the outer key <code>prime.inaugural</code> and consists of four entries, each labeled by its own VDXF key:</p>
 
@@ -126,9 +126,7 @@ Block 4041972 (PoS)
 	<p>What makes this composable is that the structure is public and the access path is direct. A different app — one that has never spoken to vcharacter-prime, that has no related API key, that needs no permission — can do the following from any Verus node:</p>
 
 	<ol>
-		<li>Look up a VerusID with <code>getidentity &lt;name&gt;@</code>.</li>
-		<li>Read the <code>contentmultimap</code> field.</li>
-		<li>Index into <code>prime.inaugural</code> by its computed i-address.</li>
+		<li>Call <code>getidentitycontent &lt;name&gt;@</code> with the <code>prime.inaugural</code> i-address as the key filter — the daemon returns only those entries (current and historical).</li>
 		<li>Pull the entry it cares about, by label.</li>
 	</ol>
 
