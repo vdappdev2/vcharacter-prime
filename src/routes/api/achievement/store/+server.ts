@@ -65,7 +65,9 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			deeplinkUri: result.deeplinkUri,
 		});
 	} catch (error) {
-		console.error('Error creating achievement storage request:', error);
+		console.error('[achievement/store] error creating storage request', {
+			error: error instanceof Error ? error.message : String(error),
+		});
 		return json(
 			{ error: error instanceof Error ? error.message : 'Failed to create storage request' },
 			{ status: 500 }

@@ -59,7 +59,9 @@ export const GET: RequestHandler = async ({ url }) => {
 		}
 		return htmlResponse(successPage(), 200);
 	} catch (err) {
-		console.error('Storage callback error:', err);
+		console.error('[storage/callback] error', {
+			error: err instanceof Error ? err.message : String(err),
+		});
 		return htmlResponse(
 			errorPage(err instanceof Error ? err.message : 'Unknown error'),
 			500,
@@ -83,14 +85,14 @@ function parseStorageResponse(
 
 		const detail = response.details[0];
 		if (!(detail instanceof IdentityUpdateResponseOrdinalVDXFObject)) {
-			console.error('Storage callback: response missing IdentityUpdateResponse detail');
+			console.error('[storage/callback] response missing IdentityUpdateResponse detail');
 			return null;
 		}
 
 		const responseDetails = detail.data as IdentityUpdateResponseDetails;
 		const txidBuffer = responseDetails.txid;
 		if (!txidBuffer) {
-			console.error('Storage callback: no txid in response');
+			console.error('[storage/callback] no txid in response');
 			return null;
 		}
 
@@ -104,7 +106,9 @@ function parseStorageResponse(
 
 		return { txid, signingId };
 	} catch (err) {
-		console.error('Storage callback parse error:', err);
+		console.error('[storage/callback] parse error', {
+			error: err instanceof Error ? err.message : String(err),
+		});
 		return null;
 	}
 }
@@ -112,8 +116,17 @@ function parseStorageResponse(
 function htmlResponse(body: string, status: number): Response {
 	return new Response(body, {
 		status,
-		headers: { 'Content-Type': 'text/html' },
+		headers: { 'Content-Type': 'text/html; charset=utf-8' },
 	});
+}
+
+function escapeHtml(s: string): string {
+	return s
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
 }
 
 function successPage(): string {
@@ -155,7 +168,7 @@ function errorPage(message: string): string {
 <body>
   <div class="card">
     <h1>Storage Failed</h1>
-    <p>${message}</p>
+    <p>${escapeHtml(message)}</p>
   </div>
 </body>
 </html>`;

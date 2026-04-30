@@ -61,7 +61,9 @@ export const GET: RequestHandler = async ({ url }) => {
     }
 
     // Network or other errors
-    console.error('Block API error:', err);
+    console.error('[block] error', {
+      error: err instanceof Error ? err.message : String(err),
+    });
     throw error(502, 'Failed to fetch block data from Verus');
   }
 };

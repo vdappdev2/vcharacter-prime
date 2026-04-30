@@ -35,6 +35,7 @@ import {
 	consumeCommitmentResponse,
 	isKvConfigured,
 } from '$lib/server/kv';
+import { sanitizeCharacterName } from '$lib/server/sanitize';
 import { rollCharacter } from '$lib/dice';
 
 function sha256(data: string): string {
@@ -57,6 +58,11 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ error: 'clientSeed is required' }, { status: 400 });
 		}
 
+		const nameResult = sanitizeCharacterName(characterName);
+		if (!nameResult.ok) {
+			return json({ error: nameResult.error }, { status: 400 });
+		}
+
 		// Derive seedHash — this is the Redis key. Callback endpoint writes under
 		// exactly this key because the seedHash is baked into the signed ResponseURI.
 		const seedHash = sha256(clientSeed);
@@ -76,7 +82,11 @@ export const POST: RequestHandler = async ({ request }) => {
 			const buf = Buffer.from(responseData, 'base64url');
 			response = new GenericResponse();
 			response.fromBuffer(buf, 0);
-		} catch {
+		} catch (decodeErr) {
+			console.error('[verify-stateless] envelope decode failed', {
+				seedHashPrefix: seedHash.slice(0, 8),
+				error: decodeErr instanceof Error ? decodeErr.message : String(decodeErr),
+			});
 			// Bad envelope in Redis — treat as permanent failure and clean up.
 			await consumeCommitmentResponse(seedHash);
 			return json({ error: 'Invalid commitment response data' }, { status: 400 });
@@ -84,11 +94,17 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		const detail = response.details[0];
 		if (!(detail instanceof AuthenticationResponseOrdinalVDXFObject)) {
+			console.error('[verify-stateless] envelope is not AuthenticationResponse', {
+				seedHashPrefix: seedHash.slice(0, 8),
+			});
 			await consumeCommitmentResponse(seedHash);
 			return json({ error: 'Response is not an AuthenticationResponse' }, { status: 400 });
 		}
 
 		if (!response.signature) {
+			console.error('[verify-stateless] envelope missing signature', {
+				seedHashPrefix: seedHash.slice(0, 8),
+			});
 			await consumeCommitmentResponse(seedHash);
 			return json({ error: 'Response is missing signature' }, { status: 400 });
 		}
@@ -96,6 +112,11 @@ export const POST: RequestHandler = async ({ request }) => {
 		const signingId = response.signature.identityID?.toIAddress?.() || '';
 		const signatureAsVch = response.signature.signatureAsVch;
 		if (!signingId || !signatureAsVch) {
+			console.error('[verify-stateless] signature incomplete', {
+				seedHashPrefix: seedHash.slice(0, 8),
+				hasSigningId: Boolean(signingId),
+				hasSignatureAsVch: Boolean(signatureAsVch),
+			});
 			await consumeCommitmentResponse(seedHash);
 			return json({ error: 'Response signature incomplete' }, { status: 400 });
 		}
@@ -110,6 +131,11 @@ export const POST: RequestHandler = async ({ request }) => {
 		});
 
 		if (!isValid) {
+			console.error('[verify-stateless] signature verification failed', {
+				seedHashPrefix: seedHash.slice(0, 8),
+				signingId,
+				commitmentBlockHeight,
+			});
 			await consumeCommitmentResponse(seedHash);
 			return json({ error: 'Invalid response signature' }, { status: 400 });
 		}
@@ -138,13 +164,16 @@ export const POST: RequestHandler = async ({ request }) => {
 			const identityInfo = await getIdentity(signingId);
 			userFriendlyName = identityInfo.friendlyname;
 		} catch (err) {
-			console.error('Failed to look up identity friendly name:', err);
+			console.warn('[verify-stateless] friendly name lookup failed (non-fatal)', {
+				signingId,
+				error: err instanceof Error ? err.message : String(err),
+			});
 		}
 
 		const diceResult = await rollCharacter(rollBlockHash, clientSeed);
 
 		const storedCharacter = {
-			name: characterName || 'Unnamed Hero',
+			name: nameResult.value || 'Unnamed Hero',
 			stats: diceResult.stats,
 			traits: diceResult.traits,
 			verification: {
@@ -180,7 +209,10 @@ export const POST: RequestHandler = async ({ request }) => {
 			},
 		});
 	} catch (error) {
-		console.error('Error in stateless verification:', error);
+		console.error('[verify-stateless] unexpected error', {
+			error: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+		});
 		return json(
 			{ error: error instanceof Error ? error.message : 'Verification failed' },
 			{ status: 500 },

@@ -59,7 +59,9 @@ export const POST: RequestHandler = async ({ request, url }) => {
       challengeId: result.challengeId,
     });
   } catch (error) {
-    console.error('Error creating commitment request:', error);
+    console.error('[commitment/request] error creating request', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return json(
       { error: error instanceof Error ? error.message : 'Failed to create commitment request' },
       { status: 500 }

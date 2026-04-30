@@ -552,6 +552,7 @@
 				<input
 					id="character-name"
 					type="text"
+					maxlength="96"
 					bind:value={characterName}
 					placeholder="Enter a name for your hero"
 					class="w-full bg-elevated border border-[var(--color-border)] rounded-lg px-4 py-2 text-primary focus:border-accent focus:outline-none"

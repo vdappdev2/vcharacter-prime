@@ -52,7 +52,9 @@ export const GET: RequestHandler = async ({ url }) => {
 		}
 		return htmlResponse(successPage(), 200);
 	} catch (err) {
-		console.error('Commitment callback error:', err);
+		console.error('[commitment/callback] error', {
+			error: err instanceof Error ? err.message : String(err),
+		});
 		return htmlResponse(
 			errorPage(err instanceof Error ? err.message : 'Unknown error'),
 			500,
@@ -63,8 +65,17 @@ export const GET: RequestHandler = async ({ url }) => {
 function htmlResponse(body: string, status: number): Response {
 	return new Response(body, {
 		status,
-		headers: { 'Content-Type': 'text/html' },
+		headers: { 'Content-Type': 'text/html; charset=utf-8' },
 	});
+}
+
+function escapeHtml(s: string): string {
+	return s
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
 }
 
 function successPage(): string {
@@ -106,7 +117,7 @@ function errorPage(message: string): string {
 <body>
   <div class="card">
     <h1>Commitment Failed</h1>
-    <p>${message}</p>
+    <p>${escapeHtml(message)}</p>
   </div>
 </body>
 </html>`;

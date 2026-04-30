@@ -103,8 +103,22 @@ async function rpcCall<T>(method: string, params: unknown[] = []): Promise<T> {
 
     // Try fallback for network/timeout errors
     if (VERUS_RPC.fallbackEndpoint) {
-      console.log(`Primary RPC failed, trying fallback: ${VERUS_RPC.fallbackEndpoint}`);
-      return await rpcCallToEndpoint<T>(VERUS_RPC.fallbackEndpoint, method, params);
+      console.warn('[verus.rpc] primary failed, trying fallback', {
+        method,
+        endpoint: VERUS_RPC.fallbackEndpoint,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      try {
+        const result = await rpcCallToEndpoint<T>(VERUS_RPC.fallbackEndpoint, method, params);
+        console.warn('[verus.rpc] fallback succeeded', { method });
+        return result;
+      } catch (fallbackError) {
+        console.error('[verus.rpc] fallback also failed', {
+          method,
+          error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+        });
+        throw fallbackError;
+      }
     }
 
     throw error;
@@ -313,8 +327,20 @@ export async function withVerusIdFallback<T>(
     return await operation(createVerusIdInterface(VERUS_RPC.endpoint));
   } catch (error) {
     if (VERUS_RPC.fallbackEndpoint) {
-      console.log(`Primary VerusIdInterface RPC failed, trying fallback: ${VERUS_RPC.fallbackEndpoint}`);
-      return await operation(createVerusIdInterface(VERUS_RPC.fallbackEndpoint));
+      console.warn('[verusid.rpc] primary failed, trying fallback', {
+        endpoint: VERUS_RPC.fallbackEndpoint,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      try {
+        const result = await operation(createVerusIdInterface(VERUS_RPC.fallbackEndpoint));
+        console.warn('[verusid.rpc] fallback succeeded');
+        return result;
+      } catch (fallbackError) {
+        console.error('[verusid.rpc] fallback also failed', {
+          error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+        });
+        throw fallbackError;
+      }
     }
     throw error;
   }

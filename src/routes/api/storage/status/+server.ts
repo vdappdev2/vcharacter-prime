@@ -31,7 +31,9 @@ export const GET: RequestHandler = async ({ url }) => {
 		}
 		return json({ status: 'pending' });
 	} catch (error) {
-		console.error('Error checking storage status:', error);
+		console.error('[storage/status] error', {
+			error: error instanceof Error ? error.message : String(error),
+		});
 		return json(
 			{ error: error instanceof Error ? error.message : 'Status check failed' },
 			{ status: 500 },

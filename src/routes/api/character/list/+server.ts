@@ -82,7 +82,9 @@ export const GET: RequestHandler = async ({ url }) => {
       characters,
     });
   } catch (error) {
-    console.error('Error listing characters:', error);
+    console.error('[character/list] error', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return json(
       {
         error: error instanceof Error ? error.message : 'Failed to list characters',

@@ -11,6 +11,7 @@ import {
   createCharacterStorageRequest,
   isStorageConfigured,
 } from '$lib/server/identityUpdate';
+import { sanitizeCharacterName } from '$lib/server/sanitize';
 import type { StoredCharacter } from '$lib/types';
 
 export const POST: RequestHandler = async ({ request, url }) => {
@@ -46,6 +47,15 @@ export const POST: RequestHandler = async ({ request, url }) => {
       return json({ error: 'character roll block data is required' }, { status: 400 });
     }
 
+    // Re-sanitize the name at the storage boundary. verify-stateless already
+    // validates on first submission, but the name can be edited client-side
+    // between roll and store, so the on-chain write is the canonical gate.
+    const nameResult = sanitizeCharacterName(character.name);
+    if (!nameResult.ok) {
+      return json({ error: nameResult.error }, { status: 400 });
+    }
+    character.name = nameResult.value || 'Unnamed Hero';
+
     // Wallet TYPE_REDIRECT destination. identityUpdate.ts will append requestId.
     const callbackUrl = `${url.origin}/api/storage/callback?type=character`;
 
@@ -58,7 +68,9 @@ export const POST: RequestHandler = async ({ request, url }) => {
       deeplinkUri: result.deeplinkUri,
     });
   } catch (error) {
-    console.error('Error creating storage request:', error);
+    console.error('[character/store] error creating storage request', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return json(
       { error: error instanceof Error ? error.message : 'Failed to create storage request' },
       { status: 500 }

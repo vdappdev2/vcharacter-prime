@@ -60,7 +60,9 @@ export const GET: RequestHandler = async ({ url }) => {
       achievements: allAchievements,
     });
   } catch (error) {
-    console.error('Error listing achievements:', error);
+    console.error('[achievement/list] error', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return json(
       {
         error: error instanceof Error ? error.message : 'Failed to list achievements',

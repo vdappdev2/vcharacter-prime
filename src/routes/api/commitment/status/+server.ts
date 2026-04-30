@@ -25,7 +25,9 @@ export const GET: RequestHandler = async ({ url }) => {
 		const received = await hasCommitmentResponse(seedHash);
 		return json({ status: received ? 'received' : 'pending' });
 	} catch (error) {
-		console.error('Error checking commitment status:', error);
+		console.error('[commitment/status] error', {
+			error: error instanceof Error ? error.message : String(error),
+		});
 		return json(
 			{ error: error instanceof Error ? error.message : 'Status check failed' },
 			{ status: 500 },

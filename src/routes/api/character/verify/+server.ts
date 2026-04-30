@@ -121,7 +121,9 @@ export const GET: RequestHandler = async ({ url }) => {
       const blockData = await getBlockByHeight(rollBlockHeight);
       blockHashValid = blockData.hash === rollBlockHash;
     } catch (err) {
-      console.error('Error fetching block for verification:', err);
+      console.error('[character/verify] error fetching block', {
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
 
     // Verification step 3: Re-derive character and compare
@@ -153,7 +155,9 @@ export const GET: RequestHandler = async ({ url }) => {
             derivedCharacter.traits.sex === storedTraits.sex;
         }
       } catch (err) {
-        console.error('Error re-deriving character:', err);
+        console.error('[character/verify] error re-deriving character', {
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
     }
 
@@ -185,7 +189,9 @@ export const GET: RequestHandler = async ({ url }) => {
       },
     });
   } catch (error) {
-    console.error('Error verifying character:', error);
+    console.error('[character/verify] error', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return json(
       {
         valid: false,

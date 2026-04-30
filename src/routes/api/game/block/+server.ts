@@ -62,7 +62,9 @@ export const GET: RequestHandler = async ({ url }) => {
 			return json({ error: error.message }, { status: 500 });
 		}
 
-		console.error('Game block API error:', error);
+		console.error('[game/block] error', {
+			error: error instanceof Error ? error.message : String(error),
+		});
 		return json({ error: 'Failed to fetch block data' }, { status: 500 });
 	}
 };

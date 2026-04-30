@@ -47,6 +47,12 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const result = await rateLimit(match.bucket, ip, match.policy);
 
 	if (!result.allowed) {
+		console.warn('[rateLimit] block', {
+			ip,
+			bucket: match.bucket,
+			path: event.url.pathname,
+			retryAfter: result.resetSeconds,
+		});
 		return json(
 			{ error: 'Rate limit exceeded', retryAfter: result.resetSeconds },
 			{
