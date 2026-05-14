@@ -55,14 +55,23 @@ export type ContentMultiMap = {
 
 /**
  * Build a single DataDescriptor entry
+ *
+ * Under application/json the on-chain payload must be valid JSON, so bare
+ * string values are JSON.stringified (producing a quoted JSON string).
+ * Under text/plain we keep the legacy passthrough so bare strings produce
+ * the {message: <string>} shape unchanged.
  */
 function buildDataDescriptor(
   label: string,
   value: string | object,
   mimetype: string = 'text/plain'
 ): DataDescriptorWrapper {
-  // Convert objects to JSON strings
-  const message = typeof value === 'object' ? JSON.stringify(value) : value;
+  const message =
+    mimetype === 'application/json'
+      ? JSON.stringify(value)
+      : typeof value === 'object'
+        ? JSON.stringify(value)
+        : value;
 
   return {
     [VDXF_KEYS.dataDescriptor]: {
@@ -100,10 +109,14 @@ function buildDataDescriptor(
 export function buildCharacterContentMap(character: StoredCharacter): ContentMultiMap {
   const entries: DataDescriptorWrapper[] = [];
 
-  // Name entry
-  entries.push(buildDataDescriptor(VDXF_KEYS.labels.name, character.name));
+  // Name entry: application/json with a JSON-encoded string payload. The
+  // reader hex-decodes then JSON.parses to recover the bare string. This
+  // keeps getidentity output as opaque hex blobs rather than human-readable
+  // strings — casual obfuscation only, content remains publicly decodable.
+  entries.push(
+    buildDataDescriptor(VDXF_KEYS.labels.name, character.name, 'application/json'),
+  );
 
-  // Stats entry - full stat objects
   const statsData = {
     strength: character.stats.str,
     dexterity: character.stats.dex,
@@ -112,18 +125,20 @@ export function buildCharacterContentMap(character: StoredCharacter): ContentMul
     wisdom: character.stats.wis,
     charisma: character.stats.cha,
   };
-  entries.push(buildDataDescriptor(VDXF_KEYS.labels.stats, statsData, 'application/json'));
+  entries.push(
+    buildDataDescriptor(VDXF_KEYS.labels.stats, statsData, 'application/json'),
+  );
 
-  // Traits entry
   const traitsData = {
     element: character.traits.element,
     spirit: character.traits.spiritAnimal,
     sex: character.traits.sex,
   };
-  entries.push(buildDataDescriptor(VDXF_KEYS.labels.traits, traitsData, 'application/json'));
+  entries.push(
+    buildDataDescriptor(VDXF_KEYS.labels.traits, traitsData, 'application/json'),
+  );
 
-  // Proof entry - minimal data needed for verification
-  // Full commitmentResponse is large; store essential fields only
+  // Proof entry - minimal data needed for verification.
   // Anyone can verify: SHA256(clientSeed) == clientSeedHash, and re-derive character
   const proofData = {
     clientSeed: character.verification.client_seed,
@@ -132,7 +147,9 @@ export function buildCharacterContentMap(character: StoredCharacter): ContentMul
     rollBlockHash: character.rollBlockHash,
     commitmentBlockHeight: character.commitment.signedBlockHeight,
   };
-  entries.push(buildDataDescriptor(VDXF_KEYS.labels.proof, proofData, 'application/json'));
+  entries.push(
+    buildDataDescriptor(VDXF_KEYS.labels.proof, proofData, 'application/json'),
+  );
 
   // Plan §9.2: outer key MUST be the FQN string for custom keys. Wallet rejects
   // raw i-address outer keys with "Cannot update with unknown key".
@@ -199,7 +216,7 @@ export interface AchievementProofData {
 export function buildAchievementContentMap(achievement: AchievementProofData): ContentMultiMap {
   const entries: DataDescriptorWrapper[] = [];
 
-  // Single entry containing all achievement data
+  // Single entry containing all achievement data.
   entries.push(buildDataDescriptor('.achievement', achievement, 'application/json'));
 
   // Plan §9.2: outer key MUST be the FQN string for custom keys.
@@ -280,6 +297,21 @@ function extractStringValue(descriptor: DataDescriptor): string | undefined {
 }
 
 /**
+ * Decode a name field that may be either a JSON-encoded string (new
+ * application/json shape) or a bare string (legacy text/plain shape).
+ * Falls back to the raw value on any parse failure or non-string result.
+ */
+function tryParseJsonString(value: string): string {
+  try {
+    const parsed = JSON.parse(value);
+    if (typeof parsed === 'string') return parsed;
+  } catch {
+    // Not valid JSON → legacy bare string.
+  }
+  return value;
+}
+
+/**
  * Parse a ContentMultiMap back into character data
  *
  * Used for verification - extracts character data from on-chain storage.
@@ -312,7 +344,9 @@ export function parseCharacterContentMap(contentMap: Record<string, unknown>): P
 
     // Match label to known fields
     if (label === VDXF_KEYS.labels.name) {
-      result.name = value;
+      // New writes encode name as application/json (JSON-quoted string);
+      // legacy text/plain entries on production identities are bare strings.
+      result.name = tryParseJsonString(value);
     } else if (label === VDXF_KEYS.labels.stats) {
       try {
         result.stats = JSON.parse(value);
@@ -380,8 +414,9 @@ export function parseAllCharacters(contentMap: Record<string, unknown>): ParsedC
       if (currentCharacter.name || currentCharacter.proof) {
         characters.push(currentCharacter);
       }
-      // Start new character
-      currentCharacter = { name: value };
+      // New writes encode name as application/json (JSON-quoted string);
+      // legacy text/plain entries on production identities are bare strings.
+      currentCharacter = { name: tryParseJsonString(value) };
     } else if (label === VDXF_KEYS.labels.stats) {
       try {
         currentCharacter.stats = JSON.parse(value);

@@ -184,6 +184,15 @@
 		wisdom: 'WIS',
 		charisma: 'CHA',
 	};
+
+	// Honors the schema doc's "readers ignore unknown keys" promise:
+	// filters Object.entries(stats) to entries with the stat-roll shape so
+	// any additive non-stat keys (legacy v:1 fixture, future metadata) don't
+	// render as ghost rows.
+	type StatRoll = { total: number; dice: number[]; modifier: number };
+	function isStatRoll(s: unknown): s is StatRoll {
+		return typeof s === 'object' && s !== null && typeof (s as StatRoll).total === 'number';
+	}
 </script>
 
 <svelte:head>
@@ -372,7 +381,7 @@
 
 					<!-- Stats -->
 					<div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-						{#each Object.entries(verificationResult.character.stats) as [statName, stat]}
+						{#each Object.entries(verificationResult.character.stats).filter(([, v]) => isStatRoll(v)) as [statName, stat]}
 							<div class="bg-elevated rounded-lg p-4 text-center">
 								<p class="text-sm text-secondary uppercase">{STAT_NAMES[statName] || statName}</p>
 								<p class="stat-value">{stat.total}</p>

@@ -198,6 +198,62 @@ describe('parseAllCharacters', () => {
     expect(parseAllCharacters({})).toEqual([]);
     expect(parseAllCharacters({ [VDXF_KEYS.primeInauguralFqn]: [] })).toEqual([]);
   });
+
+  it('handles mixed legacy text/plain and new application/json name shapes', () => {
+    // Legacy production data has text/plain names as bare strings.
+    // New writes encode names as application/json (JSON-quoted string).
+    // Both must coexist under the same outer key.
+    const legacyName = 'Legacy';
+    const newName = 'New';
+
+    const contentMap: Record<string, unknown> = {
+      [VDXF_KEYS.primeInauguralFqn]: [
+        // Legacy character (text/plain bare-string name)
+        {
+          [VDXF_KEYS.dataDescriptor]: {
+            version: 1,
+            label: VDXF_KEYS.labels.name,
+            mimetype: 'text/plain',
+            objectdata: { message: legacyName },
+          },
+        },
+        {
+          [VDXF_KEYS.dataDescriptor]: {
+            version: 1,
+            label: VDXF_KEYS.labels.proof,
+            mimetype: 'application/json',
+            objectdata: stringToHex(
+              JSON.stringify({ rollBlockHeight: 100 }),
+            ),
+          },
+        },
+        // New character (application/json JSON-quoted-string name)
+        {
+          [VDXF_KEYS.dataDescriptor]: {
+            version: 1,
+            label: VDXF_KEYS.labels.name,
+            mimetype: 'application/json',
+            objectdata: stringToHex(JSON.stringify(newName)),
+          },
+        },
+        {
+          [VDXF_KEYS.dataDescriptor]: {
+            version: 1,
+            label: VDXF_KEYS.labels.proof,
+            mimetype: 'application/json',
+            objectdata: stringToHex(JSON.stringify({ rollBlockHeight: 200 })),
+          },
+        },
+      ],
+    };
+
+    const parsed = parseAllCharacters(contentMap);
+    expect(parsed).toHaveLength(2);
+    expect(parsed[0].name).toBe(legacyName);
+    expect(parsed[0].proof?.rollBlockHeight).toBe(100);
+    expect(parsed[1].name).toBe(newName);
+    expect(parsed[1].proof?.rollBlockHeight).toBe(200);
+  });
 });
 
 describe('parseCharacterContentMap (single-character path)', () => {
